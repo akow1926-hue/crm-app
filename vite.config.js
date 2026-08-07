@@ -113,11 +113,15 @@ function crmRealtimeSyncPlugin() {
         if (url === '/api/sync' && req.method === 'POST') {
           readJson((data) => {
             const { type, payload, senderId } = data;
-            if (type === 'orders') {
+            if (type === 'orders' && Array.isArray(payload)) {
               db.orders = payload;
-            } else if (type === 'registered_users' || type === 'users') {
-              db.users = payload;
-            } else if (type === 'clients') {
+            } else if ((type === 'registered_users' || type === 'users') && Array.isArray(payload)) {
+              // Safe merge by username to never lose added employees
+              const userMap = new Map();
+              (db.users || []).forEach(u => userMap.set(String(u.username).toLowerCase(), u));
+              payload.forEach(u => userMap.set(String(u.username).toLowerCase(), u));
+              db.users = Array.from(userMap.values());
+            } else if (type === 'clients' && Array.isArray(payload)) {
               db.clients = payload;
             } else if (type === 'courier_locations') {
               db.courierLocations = payload;
@@ -127,9 +131,9 @@ function crmRealtimeSyncPlugin() {
               }
             }
             saveDb();
-            broadcastSSE(type, payload, senderId);
+            broadcastSSE(type, db[type === 'registered_users' ? 'users' : type] || payload, senderId);
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true }));
+            res.end(JSON.stringify({ success: true, db }));
           });
           return;
         }

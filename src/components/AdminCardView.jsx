@@ -676,8 +676,13 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                           {isPending && (
                             <button 
                               onClick={() => {
-                                setRegisteredUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: 'active' } : u));
-                                alert(`Пользователь @${user.username} (${user.name}) успешно АКТИВИРОВАН! Теперь он может войти в систему.`);
+                                setRegisteredUsers(prev => {
+                                  const updated = prev.map(u => u.id === user.id ? { ...u, status: 'active' } : u);
+                                  localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
+                                  broadcastDataChange('registered_users', updated);
+                                  return updated;
+                                });
+                                alert(`Пользователь @${user.username} (${user.name}) успешно АКТИВИРОВАН!`);
                               }} 
                               className="btn btn-primary" 
                               style={{ fontSize: '11px', padding: '5px 10px', background: '#10b981', borderColor: '#10b981' }}
@@ -689,7 +694,12 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                           {isActive && (
                             <button 
                               onClick={() => {
-                                setRegisteredUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: 'blocked' } : u));
+                                setRegisteredUsers(prev => {
+                                  const updated = prev.map(u => u.id === user.id ? { ...u, status: 'blocked' } : u);
+                                  localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
+                                  broadcastDataChange('registered_users', updated);
+                                  return updated;
+                                });
                               }} 
                               className="btn-icon" 
                               title="Заблокировать"
@@ -701,7 +711,12 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                           {isBlocked && (
                             <button 
                               onClick={() => {
-                                setRegisteredUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: 'active' } : u));
+                                setRegisteredUsers(prev => {
+                                  const updated = prev.map(u => u.id === user.id ? { ...u, status: 'active' } : u);
+                                  localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
+                                  broadcastDataChange('registered_users', updated);
+                                  return updated;
+                                });
                               }} 
                               className="btn-icon" 
                               title="Разблокировать / Активировать"
@@ -713,7 +728,12 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                           <button 
                             onClick={() => {
                               if (window.confirm(`Удалить учетную запись @${user.username}?`)) {
-                                setRegisteredUsers(prev => prev.filter(u => u.id !== user.id));
+                                setRegisteredUsers(prev => {
+                                  const updated = prev.filter(u => u.id !== user.id);
+                                  localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
+                                  broadcastDataChange('registered_users', updated);
+                                  return updated;
+                                });
                               }
                             }} 
                             className="btn-icon" 

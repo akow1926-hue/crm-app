@@ -66,13 +66,24 @@ export default function App() {
     ];
   });
 
+  // Helper to safely merge user lists by username
+  const mergeUserLists = (listA = [], listB = []) => {
+    const userMap = new Map();
+    listA.forEach(u => u && u.username && userMap.set(String(u.username).toLowerCase(), u));
+    listB.forEach(u => u && u.username && userMap.set(String(u.username).toLowerCase(), u));
+    return Array.from(userMap.values());
+  };
+
   // Initial Sync from Central Server DB on Startup (Works across PC, Phone, Tablet)
   useEffect(() => {
     fetchInitialServerState().then(serverDb => {
       if (serverDb) {
         if (Array.isArray(serverDb.users) && serverDb.users.length > 0) {
-          setRegisteredUsers(serverDb.users);
-          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(serverDb.users));
+          setRegisteredUsers(prev => {
+            const merged = mergeUserLists(prev, serverDb.users);
+            localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(merged));
+            return merged;
+          });
         }
         if (Array.isArray(serverDb.orders)) {
           setOrders(serverDb.orders);
@@ -95,8 +106,11 @@ export default function App() {
     const unsubscribe = subscribeToRealtimeSync((event) => {
       if (event.type === 'registered_users' || event.type === 'users') {
         if (Array.isArray(event.payload)) {
-          setRegisteredUsers(event.payload);
-          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(event.payload));
+          setRegisteredUsers(prev => {
+            const merged = mergeUserLists(prev, event.payload);
+            localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(merged));
+            return merged;
+          });
         }
       } else if (event.type === 'orders') {
         if (Array.isArray(event.payload)) {
