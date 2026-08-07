@@ -33,7 +33,7 @@ import {
   notifyDispatcherStatusChange, 
   notifyAdminPayment 
 } from './services/notificationService';
-import { broadcastDataChange, subscribeToRealtimeSync } from './services/syncEngine';
+import { broadcastDataChange, subscribeToRealtimeSync, fetchInitialServerState } from './services/syncEngine';
 
 export default function App() {
   // Auth Session State
@@ -49,33 +49,75 @@ export default function App() {
   // Persistent Orders & Clients (Clean Production State)
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_orders');
-    const list = saved ? JSON.parse(saved) : initialOrders;
-    return list.filter(o => !['1095', '1094', '1093', '1092', '1091', '1090'].includes(o.id));
+    return saved ? JSON.parse(saved) : initialOrders;
   });
 
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_clients');
-    const list = saved ? JSON.parse(saved) : initialClients;
-    return list.filter(c => !['C-101', 'C-102', 'C-103', 'C-104'].includes(c.id));
+    return saved ? JSON.parse(saved) : initialClients;
   });
 
   // Registered System Accounts
   const [registeredUsers, setRegisteredUsers] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_registered_users');
     return saved ? JSON.parse(saved) : [
-      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
+      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' },
+      { id: 'USR-2', username: 'courier', pass: 'courier123', name: 'Алишер Рахимов', role: 'courier', phone: '+998 90 777 88 99', status: 'active', createdDate: '2026-08-01 10:00' }
     ];
   });
 
-  // Real-Time Cross-Device Sync Subscription
+  // Initial Sync from Central Server DB on Startup (Works across PC, Phone, Tablet)
+  useEffect(() => {
+    fetchInitialServerState().then(serverDb => {
+      if (serverDb) {
+        if (Array.isArray(serverDb.users) && serverDb.users.length > 0) {
+          setRegisteredUsers(serverDb.users);
+          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(serverDb.users));
+        }
+        if (Array.isArray(serverDb.orders)) {
+          setOrders(serverDb.orders);
+          localStorage.setItem('cosmo_crm_orders', JSON.stringify(serverDb.orders));
+        }
+        if (Array.isArray(serverDb.clients)) {
+          setClients(serverDb.clients);
+          localStorage.setItem('cosmo_crm_clients', JSON.stringify(serverDb.clients));
+        }
+        if (serverDb.courierLocations && typeof serverDb.courierLocations === 'object') {
+          localStorage.setItem('cosmo_crm_courier_locations', JSON.stringify(serverDb.courierLocations));
+          window.dispatchEvent(new CustomEvent('courier_location_updated', { detail: serverDb.courierLocations }));
+        }
+      }
+    });
+  }, []);
+
+  // Real-Time Cross-Device Sync Subscription (SSE + BroadcastChannel)
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeSync((event) => {
       if (event.type === 'registered_users' || event.type === 'users') {
-        if (Array.isArray(event.payload)) setRegisteredUsers(event.payload);
+        if (Array.isArray(event.payload)) {
+          setRegisteredUsers(event.payload);
+          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(event.payload));
+        }
       } else if (event.type === 'orders') {
-        if (Array.isArray(event.payload)) setOrders(event.payload);
+        if (Array.isArray(event.payload)) {
+          setOrders(event.payload);
+          localStorage.setItem('cosmo_crm_orders', JSON.stringify(event.payload));
+        }
       } else if (event.type === 'clients') {
-        if (Array.isArray(event.payload)) setClients(event.payload);
+        if (Array.isArray(event.payload)) {
+          setClients(event.payload);
+          localStorage.setItem('cosmo_crm_clients', JSON.stringify(event.payload));
+        }
+      } else if (event.type === 'courier_location_updated') {
+        if (event.payload?.courierName && event.payload?.location) {
+          try {
+            const saved = localStorage.getItem('cosmo_crm_courier_locations');
+            const map = saved ? JSON.parse(saved) : {};
+            map[event.payload.courierName] = event.payload.location;
+            localStorage.setItem('cosmo_crm_courier_locations', JSON.stringify(map));
+            window.dispatchEvent(new CustomEvent('courier_location_updated', { detail: map }));
+          } catch (e) {}
+        }
       }
     });
     return () => unsubscribe();

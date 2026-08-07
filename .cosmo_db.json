@@ -1,0 +1,27 @@
+{
+  "orders": [],
+  "users": [
+    {
+      "id": "USR-1",
+      "username": "admin",
+      "pass": "admin123",
+      "name": "Администратор",
+      "role": "admin",
+      "phone": "+998 90 123 45 67",
+      "status": "active",
+      "createdDate": "2026-08-01 10:00"
+    },
+    {
+      "id": "USR-2",
+      "username": "courier",
+      "pass": "courier123",
+      "name": "Алишер Рахимов",
+      "role": "courier",
+      "phone": "+998 90 777 88 99",
+      "status": "active",
+      "createdDate": "2026-08-01 10:00"
+    }
+  ],
+  "clients": [],
+  "courierLocations": {}
+}

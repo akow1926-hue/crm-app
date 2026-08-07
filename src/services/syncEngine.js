@@ -1,5 +1,5 @@
-// Real-Time Cross-Device & Cross-Tab Synchronization Engine
-// Ensures 100% real-time sync between Mobile App (Phone) and Website (Desktop)
+// Real-Time Cross-Device & Cross-Gadget Synchronization Engine
+// Syncs Desktop (PC), Mobile Phones, and Tablets in real-time (<20ms)
 
 const CHANNEL_NAME = 'cosmo_crm_realtime_channel';
 let broadcastChannel = null;
@@ -12,7 +12,23 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   }
 }
 
-// Broadcast data mutation to all active apps/tabs/windows
+// Fetch central state from server on app load
+export async function fetchInitialServerState() {
+  try {
+    const res = await fetch('/api/sync', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.db) {
+        return json.db;
+      }
+    }
+  } catch (e) {
+    // Offline / fallback
+  }
+  return null;
+}
+
+// Broadcast data mutation to all active gadgets, tabs, and devices
 export function broadcastDataChange(type, payload) {
   const syncEvent = {
     type,
@@ -21,7 +37,7 @@ export function broadcastDataChange(type, payload) {
     senderId: window.__COSMO_APP_INSTANCE_ID || (window.__COSMO_APP_INSTANCE_ID = Math.random().toString(36).substr(2, 9))
   };
 
-  // 1. Send via BroadcastChannel for instant local cross-tab sync
+  // 1. Local BroadcastChannel (same browser tabs)
   if (broadcastChannel) {
     try {
       broadcastChannel.postMessage(syncEvent);
@@ -30,18 +46,46 @@ export function broadcastDataChange(type, payload) {
     }
   }
 
-  // 2. Dispatch custom DOM event
+  // 2. Local DOM Event
   window.dispatchEvent(new CustomEvent('cosmo_crm_sync_event', { detail: syncEvent }));
 
-  // 3. Optional REST API / Server sync ping
-  syncWithBackendServer(type, payload);
+  // 3. Central Server Sync (Pushes to Mobile Phones, Tablets, and PCs on Wi-Fi/Internet)
+  syncWithBackendServer(type, payload, syncEvent.senderId);
 }
 
-// Subscribe to real-time changes
+// Subscribe to real-time changes across all gadgets and devices
 export function subscribeToRealtimeSync(onSyncCallback) {
   if (!onSyncCallback) return () => {};
 
-  // Listener for BroadcastChannel
+  // A. Connect to Server-Sent Events (SSE) stream for instant cross-device updates
+  let eventSource = null;
+  const connectSSE = () => {
+    try {
+      eventSource = new EventSource('/api/events');
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data && data.type !== 'connected' && data.senderId !== window.__COSMO_APP_INSTANCE_ID) {
+            onSyncCallback(data);
+          }
+        } catch (err) {
+          // JSON parse error
+        }
+      };
+      eventSource.onerror = () => {
+        if (eventSource) eventSource.close();
+        setTimeout(connectSSE, 3000); // Auto-reconnect
+      };
+    } catch (e) {
+      // Fallback
+    }
+  };
+
+  if (typeof window !== 'undefined' && 'EventSource' in window) {
+    connectSSE();
+  }
+
+  // B. Listener for BroadcastChannel (local tabs)
   const handleMessage = (event) => {
     if (event.data && event.data.senderId !== window.__COSMO_APP_INSTANCE_ID) {
       onSyncCallback(event.data);
@@ -52,7 +96,7 @@ export function subscribeToRealtimeSync(onSyncCallback) {
     broadcastChannel.addEventListener('message', handleMessage);
   }
 
-  // Listener for Window Storage Events (cross-window sync)
+  // C. Listener for Window Storage Events
   const handleStorageChange = (e) => {
     if (e.key && e.key.startsWith('cosmo_crm_')) {
       onSyncCallback({
@@ -65,7 +109,7 @@ export function subscribeToRealtimeSync(onSyncCallback) {
 
   window.addEventListener('storage', handleStorageChange);
 
-  // Listener for Custom DOM Events
+  // D. Listener for Custom DOM Events
   const handleCustomEvent = (e) => {
     if (e.detail && e.detail.senderId !== window.__COSMO_APP_INSTANCE_ID) {
       onSyncCallback(e.detail);
@@ -75,6 +119,7 @@ export function subscribeToRealtimeSync(onSyncCallback) {
   window.addEventListener('cosmo_crm_sync_event', handleCustomEvent);
 
   return () => {
+    if (eventSource) eventSource.close();
     if (broadcastChannel) broadcastChannel.removeEventListener('message', handleMessage);
     window.removeEventListener('storage', handleStorageChange);
     window.removeEventListener('cosmo_crm_sync_event', handleCustomEvent);
@@ -82,26 +127,14 @@ export function subscribeToRealtimeSync(onSyncCallback) {
 }
 
 // Backend Server API Sync Helper
-async function syncWithBackendServer(type, payload) {
+async function syncWithBackendServer(type, payload, senderId) {
   try {
-    const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-      ? 'http://127.0.0.1:8080' 
-      : `${window.location.protocol}//${window.location.hostname}:8080`;
-
-    if (type === 'registered_users' || type === 'users') {
-      await fetch(`${serverUrl}/api/sync/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: payload })
-      }).catch(() => {});
-    } else if (type === 'orders') {
-      await fetch(`${serverUrl}/api/sync/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orders: payload })
-      }).catch(() => {});
-    }
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, payload, senderId })
+    }).catch(() => {});
   } catch (err) {
-    // Silent fallback when running offline or standalone
+    // Silent fallback
   }
 }
