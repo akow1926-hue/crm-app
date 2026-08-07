@@ -70,7 +70,7 @@ export default function App() {
   // Real-Time Cross-Device Sync Subscription
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeSync((event) => {
-      if (event.type === 'registered_users' || event.type === 'registered_users') {
+      if (event.type === 'registered_users' || event.type === 'users') {
         if (Array.isArray(event.payload)) setRegisteredUsers(event.payload);
       } else if (event.type === 'orders') {
         if (Array.isArray(event.payload)) setOrders(event.payload);
@@ -248,6 +248,7 @@ export default function App() {
         <DispatcherPortal 
           orders={orders} 
           setOrders={setOrders} 
+          setSelectedOrder={setSelectedOrder}
           onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
           currentUser={currentUser} 
           onLogout={handleLogout} 

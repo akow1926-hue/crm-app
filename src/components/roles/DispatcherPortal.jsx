@@ -19,7 +19,7 @@ import {
 import { sendSMSNotification } from '../../services/smsService';
 import { getActiveCouriers } from '../../services/staffHelper';
 
-export default function DispatcherPortal({ orders, setOrders, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
+export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -259,7 +259,7 @@ export default function DispatcherPortal({ orders, setOrders, onOpenNewOrder, cu
                       <MessageSquare size={13} /> SMS
                     </button>
                     <button 
-                      onClick={onOpenNewOrder}
+                      onClick={() => setSelectedOrder ? setSelectedOrder(order) : onOpenNewOrder()}
                       className="btn btn-secondary" 
                       style={{ fontSize: '11px', padding: '4px 8px' }}
                     >

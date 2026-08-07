@@ -1,5 +1,7 @@
-// Shared In-Memory & File Store for Vercel Serverless API
-// Syncs Orders, Users, Clients, and Courier Locations between Vercel WebApp, Mobile APK, and Telegram Bot
+import fs from 'fs';
+import path from 'path';
+
+const STORE_PATH = process.env.VERCEL ? '/tmp/cosmo_store.json' : path.join(process.cwd(), '.cosmo_store.json');
 
 let store = {
   orders: [],
@@ -10,12 +12,34 @@ let store = {
   courierLocations: {}
 };
 
+// Try loading persisted state from disk
+try {
+  if (fs.existsSync(STORE_PATH)) {
+    const raw = fs.readFileSync(STORE_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      store = { ...store, ...parsed };
+    }
+  }
+} catch (e) {
+  // Silent fallback
+}
+
+function persistStore() {
+  try {
+    fs.writeFileSync(STORE_PATH, JSON.stringify(store), 'utf8');
+  } catch (e) {
+    // Silent fallback
+  }
+}
+
 export function getStore() {
   return store;
 }
 
 export function updateOrders(newOrders) {
   store.orders = newOrders;
+  persistStore();
   return store.orders;
 }
 
@@ -26,11 +50,13 @@ export function addOrUpdateOrder(order) {
   } else {
     store.orders.unshift(order);
   }
+  persistStore();
   return store.orders;
 }
 
 export function updateUsers(newUsers) {
   store.users = newUsers;
+  persistStore();
   return store.users;
 }
 
@@ -41,6 +67,7 @@ export function addOrUpdateUser(user) {
   } else {
     store.users.unshift(user);
   }
+  persistStore();
   return store.users;
 }
 
@@ -53,5 +80,6 @@ export function updateCourierLocation(courierName, positionData) {
     status: positionData.status || 'В сети (Telegram / App)',
     lastUpdate: new Date().toISOString()
   };
+  persistStore();
   return store.courierLocations;
 }

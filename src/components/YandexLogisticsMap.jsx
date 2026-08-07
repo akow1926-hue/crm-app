@@ -181,10 +181,7 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   };
 
   // Route lines coordinates connecting Hub to Order markers
-  const routePolyline = filteredOrders.map(ord => {
-    const coordsObj = orderCoords.find(c => c.id === ord.id);
-    return coordsObj ? [coordsObj.lat, coordsObj.lng] : null;
-  }).filter(Boolean);
+  const routePolyline = filteredOrders.map(ord => getOrderCoordinates(ord)).filter(Boolean);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -337,7 +334,7 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
 
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         📞 <strong>{order.phone}</strong><br />
-                        📍 {coordsObj.district}<br />
+                        📍 {order.district || 'Самарканд'}<br />
                         💰 Сумма: <strong style={{ color: '#fff' }}>{order.totalAmount.toLocaleString()} сум</strong>
                       </div>
 

@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
-  Plus, 
   Printer, 
-  ShieldAlert, 
-  User, 
-  Phone, 
-  MapPin, 
-  DollarSign, 
-  Check,
-  FileText,
   Send,
-  MessageSquare,
   Smartphone
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
@@ -22,27 +13,33 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
   const activeCouriers = getActiveCouriers(registeredUsers);
   const activeWashers = getActiveWashers(registeredUsers);
 
-  const [formData, setFormData] = useState({
-    id: order?.id || `${Math.floor(5200 + Math.random() * 500)}`,
-    clientName: order?.clientName || '',
-    phone: order?.phone || '+998 ',
-    address: order?.address || '',
-    district: order?.district || 'Сиёб',
-    language: order?.language || 'Русский',
-    timeSlot: order?.timeSlot || 'В любое время',
-    urgent: order?.urgent || false,
-    deliveryDate: order?.deliveryDate || '',
-    deliveryTime: order?.deliveryTime || '',
-    landmark: order?.landmark || '',
-    status: order?.status || 'new',
-    paymentStatus: order?.paymentStatus || 'unpaid',
-    items: order?.items || [{ name: serviceCatalog[0].name, qty: 10, price: serviceCatalog[0].price, total: serviceCatalog[0].price * 10 }],
-    totalAmount: order?.totalAmount || 150000,
-    paidAmount: order?.paidAmount || 0,
-    assignedCourier: order?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
-    assignedWasher: order?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
-    notes: order?.notes || ''
+  const buildInitialFormData = (targetOrder) => ({
+    id: targetOrder?.id || `${Math.floor(5200 + Math.random() * 500)}`,
+    clientName: targetOrder?.clientName || '',
+    phone: targetOrder?.phone || '+998 ',
+    address: targetOrder?.address || '',
+    district: targetOrder?.district || 'Сиёб',
+    language: targetOrder?.language || 'Русский',
+    timeSlot: targetOrder?.timeSlot || 'В любое время',
+    urgent: targetOrder?.urgent || false,
+    deliveryDate: targetOrder?.deliveryDate || '',
+    deliveryTime: targetOrder?.deliveryTime || '',
+    landmark: targetOrder?.landmark || '',
+    status: targetOrder?.status || 'new',
+    paymentStatus: targetOrder?.paymentStatus || 'unpaid',
+    items: targetOrder?.items || [{ name: serviceCatalog[0].name, qty: 10, price: serviceCatalog[0].price, total: serviceCatalog[0].price * 10 }],
+    totalAmount: targetOrder?.totalAmount || 150000,
+    paidAmount: targetOrder?.paidAmount || 0,
+    assignedCourier: targetOrder?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
+    assignedWasher: targetOrder?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
+    notes: targetOrder?.notes || ''
   });
+
+  const [formData, setFormData] = useState(() => buildInitialFormData(order));
+
+  useEffect(() => {
+    setFormData(buildInitialFormData(order));
+  }, [order]);
 
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
   const [smsText, setSmsText] = useState('');
@@ -59,7 +56,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
     if (formData.clientName) {
       setSmsText(smsTemplates[0].getText(formData));
     }
-  }, [formData.id]);
+  }, [formData.id, formData.clientName]);
 
   const addItemRow = () => {
     const defaultSvc = serviceCatalog[0];

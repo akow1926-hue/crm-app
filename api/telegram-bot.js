@@ -186,10 +186,41 @@ async function handleMessage(msg, token) {
     return;
   }
 
-  // 6. Order Search
+  // 6. Order Search Prompt & Execution
   if (text.startsWith('🔍') || text.startsWith('/search')) {
-    await sendTgMessage(token, chatId, "🔍 Введите номер заказа (например: `1095` или имя клиента):");
+    const query = text.replace('/search', '').replace('🔍', '').trim();
+    if (!query) {
+      await sendTgMessage(token, chatId, "🔍 Введите номер заказа (например: `5200` или имя клиента):");
+      return;
+    }
+    await searchAndSendOrders(query, orders, token, chatId);
     return;
+  }
+
+  // Fallback search if user typed search query directly (e.g. "5200" or client name)
+  if (text.length >= 2) {
+    await searchAndSendOrders(text, orders, token, chatId);
+  }
+}
+
+async function searchAndSendOrders(query, orders, token, chatId) {
+  const q = query.toLowerCase();
+  const matched = orders.filter(o => 
+    String(o.id).toLowerCase().includes(q) || 
+    (o.clientName || '').toLowerCase().includes(q) || 
+    (o.phone || '').includes(q) || 
+    (o.address || '').toLowerCase().includes(q)
+  );
+
+  if (matched.length === 0) {
+    await sendTgMessage(token, chatId, `🔍 По запросу **"${query}"** заказов не найдено.`);
+    return;
+  }
+
+  await sendTgMessage(token, chatId, `🔍 Найдено заказов: **${matched.length}**`);
+  for (const o of matched.slice(0, 5)) {
+    const txt = `📦 **Заказ №${o.id}**\n👤 **Клиент:** ${o.clientName || 'Клиент'}\n📞 **Тел:** \`${o.phone || '-'}\`\n🏠 **Адрес:** ${o.address || '-'}\n📊 **Статус:** \`${o.status}\` | **Оплата:** \`${o.paymentStatus}\`\n💰 **Сумма:** **${(o.totalAmount || 0).toLocaleString()} сум**`;
+    await sendTgMessage(token, chatId, txt, getOrderInlineActions(o));
   }
 }
 
