@@ -8,6 +8,7 @@ import {
 import { serviceCatalog } from '../data/initialData';
 import { sendSMSNotification, smsTemplates } from '../services/smsService';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
+import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -86,6 +87,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    syncOrderToGoogleSheets(formData, 'SAVE').catch(() => {});
     onSave(formData);
   };
 

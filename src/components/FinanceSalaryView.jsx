@@ -18,6 +18,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { staffMembers } from '../data/initialData';
+import { syncFinanceToGoogleSheets } from '../services/googleSheetsService';
 
 export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder }) {
   const [activeSubTab, setActiveSubTab] = useState('debts'); // 'debts', 'salaries', 'history'
@@ -79,17 +80,20 @@ export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder 
       setOrders(updatedOrders);
 
       // Record transaction
-      setTransactions([
-        {
-          id: `TX-${Date.now()}`,
-          type: 'in',
-          title: `Полное погашение долга за заказ #${order.id} (${order.clientName})`,
-          amount: remainingDebt,
-          date: new Date().toLocaleString('ru-RU'),
-          method: 'Касса CRM'
-        },
-        ...transactions
-      ]);
+      const transObj = {
+        id: `TX-${Date.now()}`,
+        type: 'in',
+        title: `Полное погашение долга за заказ #${order.id} (${order.clientName})`,
+        amount: remainingDebt,
+        date: new Date().toLocaleString('ru-RU'),
+        method: 'Касса CRM',
+        orderId: order.id,
+        client: order.clientName,
+        courier: order.assignedCourier || 'Касса'
+      };
+
+      setTransactions([transObj, ...transactions]);
+      syncFinanceToGoogleSheets(transObj).catch(() => {});
 
       alert(`✅ Долг по заказу #${order.id} успешно погашен!`);
     }
@@ -122,17 +126,20 @@ export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder 
     setOrders(updatedOrders);
 
     // Record transaction
-    setTransactions([
-      {
-        id: `TX-${Date.now()}`,
-        type: 'in',
-        title: `Оплата по заказу #${paymentModalOrder.id} (${paymentModalOrder.clientName})`,
-        amount: actualPay,
-        date: new Date().toLocaleString('ru-RU'),
-        method: 'Касса CRM'
-      },
-      ...transactions
-    ]);
+    const transObj = {
+      id: `TX-${Date.now()}`,
+      type: 'in',
+      title: `Оплата по заказу #${paymentModalOrder.id} (${paymentModalOrder.clientName})`,
+      amount: actualPay,
+      date: new Date().toLocaleString('ru-RU'),
+      method: 'Касса CRM',
+      orderId: paymentModalOrder.id,
+      client: paymentModalOrder.clientName,
+      courier: paymentModalOrder.assignedCourier || 'Касса'
+    };
+
+    setTransactions([transObj, ...transactions]);
+    syncFinanceToGoogleSheets(transObj).catch(() => {});
 
     setPaymentModalOrder(null);
     setPayAmountInput('');
@@ -154,22 +161,22 @@ export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder 
       [payoutStaffModal.id]: currentPaid + amount
     });
 
-    // Record payout transaction
-    setTransactions([
-      {
-        id: `TX-${Date.now()}`,
-        type: 'out',
-        title: `Выплата зарплаты сотруднику ${payoutStaffModal.name} (${payoutStaffModal.role})`,
-        amount: amount,
-        date: new Date().toLocaleString('ru-RU'),
-        method: 'Касса CRM'
-      },
-      ...transactions
-    ]);
+    const payoutTrans = {
+      id: `TX-${Date.now()}`,
+      type: 'out',
+      title: `Выплата зарплаты сотруднику ${payoutStaffModal.name} (${payoutStaffModal.role})`,
+      amount: amount,
+      date: new Date().toLocaleString('ru-RU'),
+      method: 'Наличность',
+      courier: payoutStaffModal.name
+    };
+
+    setTransactions([payoutTrans, ...transactions]);
+    syncFinanceToGoogleSheets(payoutTrans).catch(() => {});
 
     setPayoutStaffModal(null);
     setPayoutAmountInput('');
-    alert(`💸 Начислена выплата ЗП ${amount.toLocaleString()} сум сотруднику ${payoutStaffModal.name}!`);
+    alert(`💸 Выплата ${amount.toLocaleString()} сум сотруднику ${payoutStaffModal.name} успешно проведена!`);
   };
 
   return (
