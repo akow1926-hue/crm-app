@@ -27,10 +27,29 @@ export function saveTelegramBotConfig(config) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: config }));
+    
+    // Automatically register Telegram Webhook to Vercel Serverless Function if token is provided
+    if (config.botToken) {
+      registerVercelWebhook(config.botToken);
+    }
     return true;
   } catch (e) {
     console.error('Error saving bot config:', e);
     return false;
+  }
+}
+
+// Automatically register Telegram Webhook on Vercel
+export async function registerVercelWebhook(token) {
+  if (!token) return { success: false, error: 'Токен не указан' };
+
+  try {
+    const webhookUrl = `${window.location.origin}/api/telegram-bot?token=${token.trim()}`;
+    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+    const data = await res.json();
+    return { success: data.ok, description: data.description || 'Webhook зарегистрирован на Vercel' };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
 }
 
@@ -44,6 +63,9 @@ export async function testTelegramBotToken(token) {
     const data = await res.json();
 
     if (data.ok) {
+      // Also register webhook to Vercel
+      await registerVercelWebhook(cleanToken);
+
       return {
         success: true,
         botInfo: {
