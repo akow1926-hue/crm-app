@@ -29,7 +29,8 @@ import {
   getGoogleSheetConfig, 
   saveGoogleSheetConfig, 
   syncAllOrdersToGoogleSheets, 
-  getGoogleAppsScriptTemplate 
+  getGoogleAppsScriptTemplate,
+  syncUserToGoogleSheets
 } from '../services/googleSheetsService';
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { broadcastDataChange } from '../services/syncEngine';
@@ -604,12 +605,14 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                       };
                       setRegisteredUsers(prev => {
                         const updated = [createdUser, ...prev];
+                        localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
                         broadcastDataChange('registered_users', updated);
                         return updated;
                       });
+                      syncUserToGoogleSheets(createdUser).catch(() => {});
                       setIsAddUserModalOpen(false);
                       setNewUserForm({ username: '', name: '', pass: '', role: 'courier', phone: '+998 ' });
-                      alert(`Сотрудник ${createdUser.name} (@${createdUser.username}) успешно создана и АКТИВИРОВАН!`);
+                      alert(`Сотрудник ${createdUser.name} (@${createdUser.username}) успешно создан и АКТИВИРОВАН!`);
                     }}
                     className="btn btn-primary" 
                     style={{ fontSize: '12px' }}

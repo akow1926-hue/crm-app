@@ -170,12 +170,52 @@ export const syncAllOrdersToGoogleSheets = async (orders) => {
 };
 
 /**
- * Google Apps Script Multi-Sheet Master Template Code
+ * 5. Sheet 5: Staff & Employee Sync
+ */
+export const syncUserToGoogleSheets = async (user) => {
+  const payload = {
+    targetSheet: 'Сотрудники',
+    id: user.id || `USR-${Date.now()}`,
+    username: user.username || '',
+    name: user.name || '',
+    pass: user.pass || '',
+    role: user.role || 'courier',
+    phone: user.phone || '',
+    status: user.status || 'active',
+    createdDate: user.createdDate || new Date().toLocaleString('ru-RU')
+  };
+  return postToGSheetWebhook(payload);
+};
+
+/**
+ * Fetch full database directly from Google Sheets online (Orders, Users, Finances, Logs)
+ */
+export const fetchFromGoogleSheets = async () => {
+  const config = getGoogleSheetConfig();
+  if (!config.webhookUrl) return null;
+
+  try {
+    const res = await fetch(`${config.webhookUrl}?action=getAll`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn('[GSheets Direct Fetch Error]:', err);
+  }
+  return null;
+};
+
+/**
+ * Google Apps Script Multi-Sheet Master Template Code (Full Read/Write Backend)
  */
 export const getGoogleAppsScriptTemplate = () => {
   return `// ============================================================
-// Google Apps Script — Многостраничная Синхронизация Cosmo CRM
-// Листы: 1. Заказы | 2. Журнал Действий | 3. Касса и Финансы | 4. GPS Логистика
+// Google Apps Script — Онлайн База Данных Cosmo CRM (Sheets Backend)
+// Листы: 1. Заказы | 2. Журнал Действий | 3. Касса и Финансы | 4. GPS Логистика | 5. Сотрудники
 // ============================================================
 // Инструкция по установке (1 минута):
 // 1. Откройте вашу Google Таблицу
@@ -185,6 +225,22 @@ export const getGoogleAppsScriptTemplate = () => {
 // 5. Запуск от имени: "Меня", Доступ: "Все" (Anyone)
 // 6. Скопируйте ссылку Webhook URL и вставьте в CRM
 // ============================================================
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var result = {
+      orders: getSheetObjects(ss, 'Заказы'),
+      logs: getSheetObjects(ss, 'Журнал Действий'),
+      finance: getSheetObjects(ss, 'Касса и Финансы'),
+      users: getSheetObjects(ss, 'Сотрудники'),
+      gps: getSheetObjects(ss, 'GPS Логистика')
+    };
+    return jsonResponse(result);
+  } catch (err) {
+    return jsonResponse({ status: "error", message: err.toString() });
+  }
+}
 
 function doPost(e) {
   try {
@@ -229,7 +285,39 @@ function doPost(e) {
       return jsonResponse({ status: "success", target: target, id: data.id });
     }
 
-    // 2. Лист "Журнал Действий"
+    // 2. Лист "Сотрудники"
+    if (target === 'Сотрудники') {
+      var userSheet = getOrCreateSheet(ss, 'Сотрудники', [
+        "ID", "Логин", "ФИО", "Пароль", "Роль", "Телефон", "Статус", "Дата создания"
+      ], "#fce7f3");
+
+      var uLastRow = userSheet.getLastRow();
+      var uTargetRow = -1;
+      if (uLastRow > 1) {
+        var uLogins = userSheet.getRange(2, 2, uLastRow - 1, 1).getValues();
+        for (var u = 0; u < uLogins.length; u++) {
+          if (String(uLogins[u][0]).trim().toLowerCase() === String(data.username).trim().toLowerCase()) {
+            uTargetRow = u + 2;
+            break;
+          }
+        }
+      }
+
+      var uRow = [
+        data.id || "", data.username || "", data.name || "",
+        data.pass || "", data.role || "courier", data.phone || "",
+        data.status || "active", data.createdDate || new Date().toLocaleString("ru-RU")
+      ];
+
+      if (uTargetRow > 0) {
+        userSheet.getRange(uTargetRow, 1, 1, uRow.length).setValues([uRow]);
+      } else {
+        userSheet.appendRow(uRow);
+      }
+      return jsonResponse({ status: "success", target: target, username: data.username });
+    }
+
+    // 3. Лист "Журнал Действий"
     if (target === 'Журнал Действий') {
       var logSheet = getOrCreateSheet(ss, 'Журнал Действий', [
         "Время", "Пользователь", "Роль", "Событие / Действие", "ID Заказа", "Клиент", "Детали"
@@ -242,7 +330,7 @@ function doPost(e) {
       return jsonResponse({ status: "success", target: target });
     }
 
-    // 3. Лист "Касса и Финансы"
+    // 4. Лист "Касса и Финансы"
     if (target === 'Касса и Финансы') {
       var finSheet = getOrCreateSheet(ss, 'Касса и Финансы', [
         "Дата / Время", "Тип транзакции", "Описание / Назначение", "Сумма (сум)", "Способ оплаты", "ID Заказа", "Клиент", "Ответственный"
@@ -256,7 +344,7 @@ function doPost(e) {
       return jsonResponse({ status: "success", target: target });
     }
 
-    // 4. Лист "GPS Логистика"
+    // 5. Лист "GPS Логистика"
     if (target === 'GPS Логистика') {
       var gpsSheet = getOrCreateSheet(ss, 'GPS Логистика', [
         "Время фиксации", "Имя Курьера", "Статус", "Скорость (км/ч)", "Батарея (%)", "Координаты (GPS)", "Точность (м)"
@@ -286,6 +374,23 @@ function getOrCreateSheet(ss, name, headers, headerColor) {
     sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground(headerColor);
   }
   return sheet;
+}
+
+function getSheetObjects(ss, name) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) return [];
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow <= 1 || lastCol === 0) return [];
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  return rows.map(function(row) {
+    var obj = {};
+    for (var c = 0; c < headers.length; c++) {
+      obj[headers[c]] = row[c];
+    }
+    return obj;
+  });
 }
 
 function jsonResponse(obj) {
