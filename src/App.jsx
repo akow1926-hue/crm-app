@@ -33,6 +33,7 @@ import {
   notifyDispatcherStatusChange, 
   notifyAdminPayment 
 } from './services/notificationService';
+import { broadcastDataChange, subscribeToRealtimeSync } from './services/syncEngine';
 
 export default function App() {
   // Auth Session State
@@ -49,14 +50,12 @@ export default function App() {
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_orders');
     const list = saved ? JSON.parse(saved) : initialOrders;
-    // Filter out old demo fake orders if present
     return list.filter(o => !['1095', '1094', '1093', '1092', '1091', '1090'].includes(o.id));
   });
 
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_clients');
     const list = saved ? JSON.parse(saved) : initialClients;
-    // Filter out old demo fake clients if present
     return list.filter(c => !['C-101', 'C-102', 'C-103', 'C-104'].includes(c.id));
   });
 
@@ -67,6 +66,20 @@ export default function App() {
       { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
     ];
   });
+
+  // Real-Time Cross-Device Sync Subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToRealtimeSync((event) => {
+      if (event.type === 'registered_users' || event.type === 'registered_users') {
+        if (Array.isArray(event.payload)) setRegisteredUsers(event.payload);
+      } else if (event.type === 'orders') {
+        if (Array.isArray(event.payload)) setOrders(event.payload);
+      } else if (event.type === 'clients') {
+        if (Array.isArray(event.payload)) setClients(event.payload);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const [logs, setLogs] = useState(initialLogs);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -90,21 +103,28 @@ export default function App() {
     }
   }, []);
 
-  // Sync state
+  // Sync state & Broadcast real-time changes
   useEffect(() => {
     localStorage.setItem('cosmo_crm_orders', JSON.stringify(orders));
+    broadcastDataChange('orders', orders);
   }, [orders]);
 
   useEffect(() => {
     localStorage.setItem('cosmo_crm_clients', JSON.stringify(clients));
+    broadcastDataChange('clients', clients);
   }, [clients]);
 
   useEffect(() => {
     localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(registeredUsers));
+    broadcastDataChange('registered_users', registeredUsers);
   }, [registeredUsers]);
 
   const handleRegisterUser = (newUser) => {
-    setRegisteredUsers(prev => [newUser, ...prev]);
+    setRegisteredUsers(prev => {
+      const updated = [newUser, ...prev];
+      broadcastDataChange('registered_users', updated);
+      return updated;
+    });
     setLogs(prev => [{ id: Date.now(), text: `Поступила новая заявка на регистрацию: ${newUser.name} (${newUser.username})`, time: 'Только что', type: 'system' }, ...prev]);
   };
 

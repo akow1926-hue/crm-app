@@ -38,6 +38,7 @@ import {
   getGoogleAppsScriptTemplate 
 } from '../services/googleSheetsService';
 import { getCourierLocations } from '../services/gpsTrackingService';
+import { broadcastDataChange } from '../services/syncEngine';
 
 export default function AdminCardView({ orders, setOrders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
   const [activeSection, setActiveSection] = useState('profile');
@@ -583,7 +584,11 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                         status: 'active',
                         createdDate: new Date().toLocaleString('ru-RU')
                       };
-                      setRegisteredUsers(prev => [createdUser, ...prev]);
+                      setRegisteredUsers(prev => {
+                        const updated = [createdUser, ...prev];
+                        broadcastDataChange('registered_users', updated);
+                        return updated;
+                      });
                       setIsAddUserModalOpen(false);
                       setNewUserForm({ username: '', name: '', pass: '', role: 'courier', phone: '+998 ' });
                       alert(`Сотрудник ${createdUser.name} (@${createdUser.username}) успешно создана и АКТИВИРОВАН!`);

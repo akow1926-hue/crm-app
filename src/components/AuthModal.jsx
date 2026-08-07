@@ -372,28 +372,6 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
             </button>
           </form>
         )}
-
-        {/* Quick Demo Role Selector */}
-        {!isRegister && !successPendingMsg && (
-          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '10px' }}>
-            <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-dim)', textAlign: 'center', marginBottom: '10px' }}>
-              ⚡ Быстрый демо-вход (Активированные логины):
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {demoAccounts.map((acc, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleQuickDemo(acc)}
-                  className="btn btn-secondary"
-                  style={{ fontSize: '12px', padding: '8px 10px', justifyContent: 'flex-start' }}
-                >
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
