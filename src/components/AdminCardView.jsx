@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   User, 
@@ -24,7 +24,10 @@ import {
   FileSpreadsheet,
   Copy,
   ExternalLink,
-  CheckCircle
+  CheckCircle,
+  Radio,
+  MapPin,
+  Truck
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
 import { getSMSConfig, saveSMSConfig } from '../services/smsService';
@@ -34,9 +37,34 @@ import {
   syncAllOrdersToGoogleSheets, 
   getGoogleAppsScriptTemplate 
 } from '../services/googleSheetsService';
+import { getCourierLocations } from '../services/gpsTrackingService';
 
 export default function AdminCardView({ orders, setOrders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
   const [activeSection, setActiveSection] = useState('profile');
+
+  // New Employee Modal State
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    username: '',
+    name: '',
+    pass: '',
+    role: 'courier',
+    phone: '+998 '
+  });
+
+  // Live Courier Locations State
+  const [courierGpsMap, setCourierGpsMap] = useState(getCourierLocations());
+
+  useEffect(() => {
+    const updateGps = () => setCourierGpsMap(getCourierLocations());
+    updateGps();
+    const interval = setInterval(updateGps, 4000);
+    window.addEventListener('courier_location_updated', updateGps);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('courier_location_updated', updateGps);
+    };
+  }, []);
 
   // Telegram Binding State
   const [telegramId, setTelegramId] = useState('583920194');
@@ -393,18 +421,180 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
 
       {/* SECTION 2: USER & ROLE MANAGEMENT */}
       {activeSection === 'users' && (
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: '700' }}>👥 Пользователи и Заявки на Доступ</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Подтверждайте новые заявки на регистрацию и уполномочивайте роли</p>
-            </div>
-            {registeredUsers && registeredUsers.some(u => u.status === 'pending') && (
-              <span className="badge badge-cancel" style={{ fontSize: '12px', padding: '6px 12px' }}>
-                ⏳ Ожидают подтверждения: {registeredUsers.filter(u => u.status === 'pending').length}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Live Courier Geolocation Monitoring Card */}
+          <div className="glass-card" style={{ border: '1px solid rgba(245, 158, 11, 0.4)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Radio size={22} color="#f59e0b" className="animate-pulse" />
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>📡 Непрерывный GPS-Мониторинг Курьеров</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Реальное местоположение курьеров, передаваемое с их мобильных телефонов в режиме online</p>
+                </div>
+              </div>
+              <span className="badge badge-pickup" style={{ fontSize: '11px', padding: '6px 12px' }}>
+                🟢 Онлайн курьеров в сети: {Object.keys(courierGpsMap).length || 2}
               </span>
-            )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+              {/* Active Couriers List with Live GPS */}
+              {[
+                { name: 'Алишер Рахимов', phone: '+998 90 222 33 44', role: 'courier' },
+                { name: 'Сардор Мирзаев', phone: '+998 90 999 11 22', role: 'courier' }
+              ].map(cour => {
+                const liveData = courierGpsMap[cour.name];
+                return (
+                  <div key={cour.name} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Truck size={16} color="#f59e0b" /> {cour.name}
+                      </div>
+                      <span className={`badge ${liveData ? 'badge-done' : 'badge-pickup'}`} style={{ fontSize: '10px' }}>
+                        {liveData ? '🟢 В ЭФИРЕ' : '📡 ДЕМО-ТРЕКИНГ'}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MapPin size={14} color="#60a5fa" />
+                      <span>
+                        GPS: <strong>{liveData?.lat ? `${liveData.lat.toFixed(5)}, ${liveData.lng.toFixed(5)}` : '39.6560, 66.9680 (Самарканд)'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                      <span>Скорость: {liveData?.speed || 34} км/ч</span>
+                      <span>Статус: {liveData?.status || 'На линии'}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
+          {/* User List & Add Employee Panel */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700' }}>👥 Панель Управления Сотрудниками</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Создавайте аккаунты сотрудников, настраивайте роли, пароли и права доступа</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {registeredUsers && registeredUsers.some(u => u.status === 'pending') && (
+                  <span className="badge badge-cancel" style={{ fontSize: '12px', padding: '6px 12px' }}>
+                    ⏳ Ожидают подтверждения: {registeredUsers.filter(u => u.status === 'pending').length}
+                  </span>
+                )}
+
+                <button 
+                  onClick={() => setIsAddUserModalOpen(true)}
+                  className="btn btn-primary"
+                  style={{ fontSize: '12px', padding: '8px 14px' }}
+                >
+                  <Plus size={16} /> Добавить Сотрудника
+                </button>
+              </div>
+            </div>
+
+            {/* Inline Add User Modal / Form */}
+            {isAddUserModalOpen && (
+              <div style={{ background: 'rgba(17, 24, 39, 0.95)', border: '1px solid var(--border-glow)', borderRadius: 'var(--radius-md)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>➕ Создание Новой Учетной Записи Сотрудника</h4>
+                  <button onClick={() => setIsAddUserModalOpen(false)} className="btn-icon">✕</button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                  <div className="input-group">
+                    <label className="input-label">ФИО Сотрудника *</label>
+                    <input 
+                      type="text" 
+                      placeholder="Иван Иванов"
+                      value={newUserForm.name} 
+                      onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Логин (Username) *</label>
+                    <input 
+                      type="text" 
+                      placeholder="courier2"
+                      value={newUserForm.username} 
+                      onChange={e => setNewUserForm({ ...newUserForm, username: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Пароль *</label>
+                    <input 
+                      type="text" 
+                      placeholder="pass123"
+                      value={newUserForm.pass} 
+                      onChange={e => setNewUserForm({ ...newUserForm, pass: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Роль в системе *</label>
+                    <select 
+                      value={newUserForm.role}
+                      onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                      className="select-field"
+                    >
+                      <option value="courier">🚚 Курьер</option>
+                      <option value="dispatcher">🎧 Диспетчер</option>
+                      <option value="washer">🧼 Мойщик (Оператор стирки)</option>
+                      <option value="admin">🛡️ Администратор</option>
+                    </select>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Номер телефона</label>
+                    <input 
+                      type="text" 
+                      value={newUserForm.phone} 
+                      onChange={e => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button onClick={() => setIsAddUserModalOpen(false)} className="btn btn-secondary" style={{ fontSize: '12px' }}>Отмена</button>
+                  <button 
+                    onClick={() => {
+                      if (!newUserForm.username || !newUserForm.name || !newUserForm.pass) {
+                        alert('Заполните все обязательные поля!');
+                        return;
+                      }
+                      const createdUser = {
+                        id: `USR-${Date.now().toString().slice(-4)}`,
+                        username: newUserForm.username.trim(),
+                        name: newUserForm.name.trim(),
+                        pass: newUserForm.pass.trim(),
+                        role: newUserForm.role,
+                        phone: newUserForm.phone.trim(),
+                        status: 'active',
+                        createdDate: new Date().toLocaleString('ru-RU')
+                      };
+                      setRegisteredUsers(prev => [createdUser, ...prev]);
+                      setIsAddUserModalOpen(false);
+                      setNewUserForm({ username: '', name: '', pass: '', role: 'courier', phone: '+998 ' });
+                      alert(`Сотрудник ${createdUser.name} (@${createdUser.username}) успешно создана и АКТИВИРОВАН!`);
+                    }}
+                    className="btn btn-primary" 
+                    style={{ fontSize: '12px' }}
+                  >
+                    Сохранить Сотрудника
+                  </button>
+                </div>
+              </div>
+            )}
 
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', minWidth: '650px' }}>
@@ -516,6 +706,7 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
             </table>
           </div>
         </div>
+      </div>
       )}
 
       {/* SECTION 3: OPERATIONS & FINANCE CONTROL */}

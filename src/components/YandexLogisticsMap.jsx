@@ -15,6 +15,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+import { getCourierLocations } from '../services/gpsTrackingService';
+
 export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder }) {
   const [filterType, setFilterType] = useState('all');
   const [selectedCourier, setSelectedCourier] = useState('all');
@@ -40,17 +42,41 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
     { id: 'ST-3', name: 'Сардор Мирзаев', lat: 39.6420, lng: 66.9420, speed: 41, battery: 94, status: 'Доставка по ул. Дагбитская' }
   ]);
 
-  // Live GPS movement simulation in Samarkand
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCouriers(prev => prev.map(c => ({
+  // Sync real-time GPS coordinates from continuous GPS tracking service
+  const syncLiveGpsPositions = () => {
+    const liveMap = getCourierLocations();
+    setCouriers(prev => prev.map(c => {
+      const liveData = liveMap[c.name];
+      if (liveData && liveData.lat && liveData.lng) {
+        return {
+          ...c,
+          lat: liveData.lat,
+          lng: liveData.lng,
+          speed: liveData.speed || c.speed,
+          battery: liveData.battery || c.battery,
+          status: liveData.status || c.status,
+          isRealGps: true,
+          lastUpdate: liveData.lastUpdate
+        };
+      }
+      return {
         ...c,
-        lat: c.lat + (Math.random() - 0.5) * 0.0012,
-        lng: c.lng + (Math.random() - 0.5) * 0.0012,
-        speed: Math.floor(25 + Math.random() * 25)
-      })));
-    }, 4000);
-    return () => clearInterval(interval);
+        lat: c.lat + (Math.random() - 0.5) * 0.0008,
+        lng: c.lng + (Math.random() - 0.5) * 0.0008,
+        speed: Math.floor(25 + Math.random() * 20)
+      };
+    }));
+  };
+
+  useEffect(() => {
+    syncLiveGpsPositions();
+    const interval = setInterval(syncLiveGpsPositions, 3000);
+    const handleLocationEvent = () => syncLiveGpsPositions();
+    window.addEventListener('courier_location_updated', handleLocationEvent);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('courier_location_updated', handleLocationEvent);
+    };
   }, []);
 
   // Filter orders

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Truck, 
   MapPin, 
@@ -16,15 +16,41 @@ import {
   FileText,
   Printer,
   X,
-  Compass
+  Compass,
+  Radio
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
+import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout }) {
   // Tabs: 'pickups' | 'deliveries' | 'newOrder'
   const [activeSubTab, setActiveSubTab] = useState('pickups');
   // Scope: 'my' (only assigned) | 'all' (all CRM orders)
   const [scopeFilter, setScopeFilter] = useState('my');
+
+  // Continuous GPS Tracking State
+  const [isGpsActive, setIsGpsActive] = useState(true);
+  const [liveGpsData, setLiveGpsData] = useState(null);
+  const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
+
+  // Auto-start continuous GPS tracking on mount when courier is logged in
+  useEffect(() => {
+    const courierName = currentUser?.name || 'Алишер Рахимов';
+    if (isGpsActive) {
+      startContinuousGpsTracking(courierName, (location) => {
+        setLiveGpsData(location);
+        setGpsUpdateCount(c => c + 1);
+        if (location.lat && location.lng) {
+          setGpsLocation(`${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`);
+        }
+      });
+      return () => {
+        stopContinuousGpsTracking();
+      };
+    } else {
+      stopContinuousGpsTracking();
+    }
+  }, [currentUser, isGpsActive]);
 
   // Modals state
   const [pickupModalOrder, setPickupModalOrder] = useState(null);
@@ -264,6 +290,46 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
             <LogOut size={16} /> Выйти
           </button>
         </div>
+      </div>
+
+      {/* Live Continuous GPS Status Bar */}
+      <div style={{
+        background: isGpsActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
+        border: `1px solid ${isGpsActive ? '#10b981' : '#f43f5e'}`,
+        borderRadius: 'var(--radius-md)',
+        padding: '10px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '10px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Radio size={20} color={isGpsActive ? '#10b981' : '#f43f5e'} className={isGpsActive ? 'animate-pulse' : ''} />
+          <div>
+            <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {isGpsActive ? '📡 GPS Геолокация передается непрерывно' : '⚠️ GPS Трекинг остановлен'}
+              <span className={`badge ${isGpsActive ? 'badge-done' : 'badge-cancel'}`} style={{ fontSize: '10px' }}>
+                {isGpsActive ? 'В эфире' : 'Офлайн'}
+              </span>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {liveGpsData?.lat ? (
+                <>Координаты: <strong>{liveGpsData.lat.toFixed(5)}, {liveGpsData.lng.toFixed(5)}</strong> | Точность: ~{liveGpsData.accuracy || 10}м | Обновлений: #{gpsUpdateCount}</>
+              ) : (
+                'Ожидание отклика GPS датчика телефона...'
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsGpsActive(!isGpsActive)}
+          className={`btn ${isGpsActive ? 'btn-secondary' : 'btn-primary'}`}
+          style={{ fontSize: '11px', padding: '6px 12px' }}
+        >
+          {isGpsActive ? 'Пауза GPS' : 'Включить GPS'}
+        </button>
       </div>
 
       {/* Filter Scope Switcher: My vs All */}
