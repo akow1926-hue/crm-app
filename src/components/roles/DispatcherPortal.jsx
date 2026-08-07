@@ -17,8 +17,10 @@ import {
   Clock
 } from 'lucide-react';
 import { sendSMSNotification } from '../../services/smsService';
+import { getActiveCouriers } from '../../services/staffHelper';
 
-export default function DispatcherPortal({ orders, setOrders, onOpenNewOrder, currentUser, onLogout }) {
+export default function DispatcherPortal({ orders, setOrders, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
+  const activeCouriers = getActiveCouriers(registeredUsers);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [districtFilter, setDistrictFilter] = useState('all');
@@ -289,8 +291,11 @@ export default function DispatcherPortal({ orders, setOrders, onOpenNewOrder, cu
                   className="select-field"
                 >
                   <option value="all">📢 Все курьеры (Общий чат)</option>
-                  <option value="Алишер Рахимов">Алишер Рахимов</option>
-                  <option value="Сардор Мирзаев">Сардор Мирзаев</option>
+                  {activeCouriers.map(c => (
+                    <option key={c.id || c.username} value={c.name || c.username}>
+                      {c.name} (@{c.username})
+                    </option>
+                  ))}
                 </select>
               </div>
 

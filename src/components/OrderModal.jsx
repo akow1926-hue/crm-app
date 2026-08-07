@@ -14,10 +14,14 @@ import {
   MessageSquare,
   Smartphone
 } from 'lucide-react';
-import { serviceCatalog, staffMembers } from '../data/initialData';
+import { serviceCatalog } from '../data/initialData';
 import { sendSMSNotification, smsTemplates } from '../services/smsService';
+import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
 
-export default function OrderModal({ order, onClose, onSave }) {
+export default function OrderModal({ order, onClose, onSave, registeredUsers }) {
+  const activeCouriers = getActiveCouriers(registeredUsers);
+  const activeWashers = getActiveWashers(registeredUsers);
+
   const [formData, setFormData] = useState({
     id: order?.id || `${Math.floor(5200 + Math.random() * 500)}`,
     clientName: order?.clientName || '',
@@ -35,8 +39,8 @@ export default function OrderModal({ order, onClose, onSave }) {
     items: order?.items || [{ name: serviceCatalog[0].name, qty: 10, price: serviceCatalog[0].price, total: serviceCatalog[0].price * 10 }],
     totalAmount: order?.totalAmount || 150000,
     paidAmount: order?.paidAmount || 0,
-    assignedCourier: order?.assignedCourier || 'Алишер Рахимов',
-    assignedWasher: order?.assignedWasher || 'Баходмир Муминов',
+    assignedCourier: order?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
+    assignedWasher: order?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
     notes: order?.notes || ''
   });
 
@@ -380,8 +384,15 @@ export default function OrderModal({ order, onClose, onSave }) {
                 onChange={(e) => setFormData({ ...formData, assignedCourier: e.target.value })}
                 className="select-field"
               >
-                <option value="Алишер Рахимов">Алишер Рахимов</option>
-                <option value="Сардор Мирзаев">Сардор Мирзаев</option>
+                {activeCouriers.length > 0 ? (
+                  activeCouriers.map(c => (
+                    <option key={c.id || c.username} value={c.name || c.username}>
+                      {c.name} (@{c.username})
+                    </option>
+                  ))
+                ) : (
+                  <option value="Не назначен">Не назначен (Создайте курьера в панели)</option>
+                )}
               </select>
             </div>
           </div>

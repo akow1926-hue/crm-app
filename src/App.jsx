@@ -251,12 +251,14 @@ export default function App() {
           onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
           currentUser={currentUser} 
           onLogout={handleLogout} 
+          registeredUsers={registeredUsers}
         />
         {(selectedOrder || isNewOrderModalOpen) && (
           <OrderModal 
             order={presetOrderData ? { ...presetOrderData, id: `${Math.floor(1096 + Math.random() * 100)}`, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
             onClose={() => { setSelectedOrder(null); setIsNewOrderModalOpen(false); setPresetOrderData(null); }}
             onSave={handleSaveOrder}
+            registeredUsers={registeredUsers}
           />
         )}
       </div>
@@ -330,6 +332,7 @@ export default function App() {
               orders={orders}
               setOrders={setOrders}
               setSelectedOrder={setSelectedOrder}
+              registeredUsers={registeredUsers}
             />
           )}
 
@@ -386,6 +389,7 @@ export default function App() {
           order={presetOrderData ? { ...presetOrderData, id: `${Math.floor(1096 + Math.random() * 100)}`, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
           onClose={() => { setSelectedOrder(null); setIsNewOrderModalOpen(false); setPresetOrderData(null); }}
           onSave={handleSaveOrder}
+          registeredUsers={registeredUsers}
         />
       )}
 

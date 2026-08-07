@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 
 import { getCourierLocations } from '../services/gpsTrackingService';
+import { getActiveCouriers } from '../services/staffHelper';
 
-export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder }) {
+export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder, registeredUsers }) {
+  const activeCouriers = getActiveCouriers(registeredUsers);
   const [filterType, setFilterType] = useState('all');
   const [selectedCourier, setSelectedCourier] = useState('all');
   const [searchMapQuery, setSearchMapQuery] = useState('');
@@ -342,13 +344,20 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '6px' }}>
                         <label style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: '700' }}>Ответственный курьер:</label>
                         <select 
-                          value={order.assignedCourier || 'Алишер Рахимов'}
+                          value={order.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен')}
                           onChange={(e) => assignCourierToOrder(order.id, e.target.value)}
                           className="select-field"
                           style={{ fontSize: '11px', padding: '4px 6px' }}
                         >
-                          <option value="Алишер Рахимов">Алишер Рахимов</option>
-                          <option value="Сардор Мирзаев">Сардор Мирзаев</option>
+                          {activeCouriers.length > 0 ? (
+                            activeCouriers.map(c => (
+                              <option key={c.id || c.username} value={c.name || c.username}>
+                                {c.name} (@{c.username})
+                              </option>
+                            ))
+                          ) : (
+                            <option value="Не назначен">Не назначен</option>
+                          )}
                         </select>
                       </div>
 
