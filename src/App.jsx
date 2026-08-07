@@ -222,6 +222,7 @@ export default function App() {
           setOrders={setOrders} 
           currentUser={currentUser} 
           onLogout={handleLogout} 
+          registeredUsers={registeredUsers}
         />
       </div>
     );

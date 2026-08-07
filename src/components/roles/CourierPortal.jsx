@@ -21,8 +21,11 @@ import {
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
+import { getActiveCouriers } from '../../services/staffHelper';
 
-export default function CourierPortal({ orders, setOrders, currentUser, onLogout }) {
+export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
+  const activeCouriers = getActiveCouriers(registeredUsers);
+
   // Tabs: 'pickups' | 'deliveries' | 'newOrder'
   const [activeSubTab, setActiveSubTab] = useState('pickups');
   // Scope: 'my' (only assigned) | 'all' (all CRM orders)
@@ -33,10 +36,11 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [liveGpsData, setLiveGpsData] = useState(null);
   const [gpsUpdateCount, setGpsUpdateCount] = useState(0);
 
+  const courierName = currentUser?.name || currentUser?.username || 'Курьер';
+
   // Auto-start continuous GPS tracking on mount when courier is logged in
   useEffect(() => {
-    const courierName = currentUser?.name || 'Алишер Рахимов';
-    if (isGpsActive) {
+    if (isGpsActive && courierName) {
       startContinuousGpsTracking(courierName, (location) => {
         setLiveGpsData(location);
         setGpsUpdateCount(c => c + 1);
@@ -50,7 +54,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     } else {
       stopContinuousGpsTracking();
     }
-  }, [currentUser, isGpsActive]);
+  }, [courierName, isGpsActive]);
 
   // Modals state
   const [pickupModalOrder, setPickupModalOrder] = useState(null);
@@ -71,7 +75,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [underpaidReason, setUnderpaidReason] = useState('');
 
   // Reassign state
-  const [targetCourier, setTargetCourier] = useState('Сардор Мирзаев');
+  const [targetCourier, setTargetCourier] = useState(activeCouriers[0]?.name || activeCouriers[0]?.username || 'Все курьеры');
 
   // Street New Order state
   const [streetOrder, setStreetOrder] = useState({
@@ -87,7 +91,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const filteredOrdersByScope = orders.filter(o => {
     if (scopeFilter === 'all') return true;
     const cour = o.assignedCourier || '';
-    const myName = currentUser?.name || 'Алишер Рахимов';
+    const myName = courierName;
     return cour === myName || cour === 'Все курьеры' || cour === 'Не назначен';
   });
 
@@ -196,7 +200,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           <div class="row"><span>Клиент:</span><span>${order.clientName}</span></div>
           <div class="row"><span>Тел:</span><span>${order.phone}</span></div>
           <div class="row"><span>Адрес:</span><span>${order.address}</span></div>
-          <div class="row"><span>Курьер:</span><span>${currentUser?.name || 'Алишер Рахимов'}</span></div>
+          <div class="row"><span>Курьер:</span><span>${courierName}</span></div>
           <hr/>
           <div class="row"><span>Сумма заказа:</span><span>${(order.totalAmount || 0).toLocaleString()} сум</span></div>
           <div class="row"><span>Оплачено:</span><span>${(order.paidAmount || order.totalAmount || 0).toLocaleString()} сум</span></div>
@@ -235,7 +239,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       district: streetOrder.district,
       status: 'cleaning', // Immediately picked up
       paymentStatus: 'unpaid',
-      assignedCourier: currentUser?.name || 'Алишер Рахимов',
+      assignedCourier: courierName,
       urgent: false,
       items: [{ name: 'Ковры (Забор на месте)', qty: streetOrder.itemsCount, price: 18000, total: streetOrder.itemsCount * 18000 }],
       totalAmount: streetOrder.itemsCount * 18000,
@@ -278,7 +282,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           </div>
           <div>
             <span className="badge badge-pickup" style={{ fontSize: '10px' }}>Мобильный кабинет Курьера</span>
-            <h2 style={{ fontSize: '18px', fontWeight: '800' }}>{currentUser?.name || 'Алишер Рахимов'}</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: '800' }}>{courierName}</h2>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               Задач на смене: <strong>{myPickups.length + myDeliveries.length}</strong>
             </div>
@@ -345,7 +349,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
             color: scopeFilter === 'my' ? '#fff' : 'var(--text-muted)'
           }}
         >
-          📌 Назначенные мне ({orders.filter(o => (o.assignedCourier === (currentUser?.name || 'Алишер Рахимов') || o.assignedCourier === 'Все курьеры') && (o.status !== 'done')).length})
+          📌 Назначенные мне ({orders.filter(o => (o.assignedCourier === courierName || o.assignedCourier === 'Все курьеры') && (o.status !== 'done')).length})
         </button>
         <button
           onClick={() => setScopeFilter('all')}
@@ -823,8 +827,11 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   onChange={(e) => setTargetCourier(e.target.value)} 
                   className="select-field"
                 >
-                  <option value="Алишер Рахимов">Алишер Рахимов</option>
-                  <option value="Сардор Мирзаев">Сардор Мирзаев</option>
+                  {activeCouriers.map(c => (
+                    <option key={c.id || c.username} value={c.name || c.username}>
+                      {c.name || c.username}
+                    </option>
+                  ))}
                   <option value="Все курьеры">Все курьеры (Свободный забор)</option>
                 </select>
               </div>

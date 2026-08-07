@@ -241,7 +241,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                   <div><strong>📍 Район:</strong> {order.district || 'Сиёб'} | <strong>Адрес:</strong> {order.address}</div>
                   {order.landmark && <div style={{ color: '#f59e0b' }}>Ориентир: {order.landmark}</div>}
                   <div><strong>🕒 Слот забора:</strong> {order.timeSlot || 'В любое время'}</div>
-                  <div><strong>🚚 Курьер:</strong> {order.assignedCourier || 'Алишер Рахимов'}</div>
+                  <div><strong>🚚 Курьер:</strong> {order.assignedCourier || 'Не назначен'}</div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>

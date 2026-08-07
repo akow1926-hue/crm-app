@@ -1,5 +1,4 @@
-// Real-time Continuous Courier Geolocation Tracking Service
-// Manages continuous GPS tracking for couriers and syncs live position to CRM
+import { broadcastDataChange } from './syncEngine';
 
 const STORAGE_KEY = 'cosmo_crm_courier_locations';
 const HISTORY_KEY = 'cosmo_crm_courier_routes';
@@ -63,7 +62,10 @@ export function updateCourierLocation(courierName, positionData) {
     console.error('Error updating courier route history:', err);
   }
 
-  // Dispatch custom window event for real-time reactive UI update across tabs/components
+  // Broadcast event across tabs/windows/devices
+  broadcastDataChange('courier_location_updated', { courierName, location: updatedLocation });
+
+  // Dispatch custom window event for local reactive UI update
   window.dispatchEvent(new CustomEvent('courier_location_updated', {
     detail: { courierName, location: updatedLocation }
   }));

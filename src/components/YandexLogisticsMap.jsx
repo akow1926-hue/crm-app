@@ -17,6 +17,7 @@ import {
 
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { getActiveCouriers } from '../services/staffHelper';
+import { subscribeToRealtimeSync } from '../services/syncEngine';
 
 export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -28,26 +29,36 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   // Real Samarkand Center Coordinates
   const samarkandCenter = [39.6542, 66.9597];
 
-  // Dynamic Live GPS Couriers Positions (Populated only from real transmission)
+  // Dynamic Live GPS Couriers Positions
   const [couriers, setCouriers] = useState([]);
 
   // Sync real-time GPS coordinates from continuous GPS tracking service
   const syncLiveGpsPositions = () => {
     const liveMap = getCourierLocations();
-    const activeCouriersList = Object.keys(liveMap).map(courierName => {
+    const systemCouriers = getActiveCouriers(registeredUsers);
+
+    // Dynamic set of all courier names (registered + live)
+    const courierNames = new Set([
+      ...systemCouriers.map(c => c.name || c.username),
+      ...Object.keys(liveMap)
+    ]);
+
+    const activeCouriersList = Array.from(courierNames).map(courierName => {
       const liveData = liveMap[courierName];
+      const hasGps = !!(liveData && liveData.lat && liveData.lng);
       return {
         id: `COUR-${courierName}`,
         name: courierName,
-        lat: liveData.lat,
-        lng: liveData.lng,
-        speed: liveData.speed || 0,
-        battery: liveData.battery || 100,
-        status: liveData.status || 'В сети',
-        isRealGps: true,
-        lastUpdate: liveData.lastUpdate
+        lat: hasGps ? liveData.lat : samarkandCenter[0],
+        lng: hasGps ? liveData.lng : samarkandCenter[1],
+        speed: hasGps ? (liveData.speed || 0) : 0,
+        battery: hasGps ? (liveData.battery || 95) : 100,
+        status: hasGps ? (liveData.status || 'В сети (GPS передается)') : '⚪ Ожидание подключения GPS',
+        isOnline: hasGps,
+        lastUpdate: liveData?.lastUpdate || null
       };
     });
+
     setCouriers(activeCouriersList);
   };
 
@@ -56,11 +67,19 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
     const interval = setInterval(syncLiveGpsPositions, 3000);
     const handleLocationEvent = () => syncLiveGpsPositions();
     window.addEventListener('courier_location_updated', handleLocationEvent);
+
+    const unsubscribe = subscribeToRealtimeSync((event) => {
+      if (event.type === 'courier_location_updated' || event.type === 'registered_users') {
+        syncLiveGpsPositions();
+      }
+    });
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('courier_location_updated', handleLocationEvent);
+      unsubscribe();
     };
-  }, []);
+  }, [registeredUsers]);
 
   // Dynamic coordinate helper for real orders
   const getOrderCoordinates = (order) => {
@@ -272,9 +291,12 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
             className="select-field"
             style={{ width: 'auto', flex: '1', minWidth: '120px', fontSize: '12px', height: '32px', padding: '0 8px' }}
           >
-            <option value="all">Все курьеры</option>
-            <option value="Алишер Рахимов">Алишер</option>
-            <option value="Сардор Мирзаев">Сардор</option>
+            <option value="all">Все курьеры ({activeCouriers.length})</option>
+            {activeCouriers.map(c => (
+              <option key={c.id || c.username} value={c.name || c.username}>
+                {c.name || c.username}
+              </option>
+            ))}
           </select>
 
           <button

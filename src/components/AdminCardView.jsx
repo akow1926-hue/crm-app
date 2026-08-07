@@ -441,31 +441,49 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                     </div>
                   );
                 }
-                const itemsToRender = activeCouriers.length > 0 ? activeCouriers : Object.keys(courierGpsMap).map(name => ({ name }));
+                const systemCouriers = (registeredUsers || []).filter(u => {
+                  const r = String(u.role || u.Role || '').toLowerCase();
+                  return (r.includes('courier') || r.includes('курьер')) && u.status !== 'blocked';
+                });
 
-                return itemsToRender.map(cour => {
-                  const liveData = courierGpsMap[cour.name];
+                // Unique list of all courier display names
+                const allCourierNames = new Set([
+                  ...systemCouriers.map(u => u.name || u.username),
+                  ...Object.keys(courierGpsMap)
+                ]);
+
+                if (allCourierNames.size === 0) {
                   return (
-                    <div key={cour.name} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
+                      Ожидание регистрации курьеров и первого сеанса GPS геолокации...
+                    </div>
+                  );
+                }
+
+                return Array.from(allCourierNames).map(cName => {
+                  const liveData = courierGpsMap[cName];
+                  const isOnline = !!(liveData && liveData.lat && liveData.lng);
+                  return (
+                    <div key={cName} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Truck size={16} color="#f59e0b" /> {cour.name}
+                          <Truck size={16} color="#f59e0b" /> {cName}
                         </div>
-                        <span className={`badge ${liveData ? 'badge-done' : 'badge-cancel'}`} style={{ fontSize: '10px' }}>
-                          {liveData ? '🟢 В ЭФИРЕ' : '⚪ ОФЛАЙН'}
+                        <span className={`badge ${isOnline ? 'badge-done' : 'badge-cancel'}`} style={{ fontSize: '10px' }}>
+                          {isOnline ? '🟢 В ЭФИРЕ' : '⚪ ОФЛАЙН'}
                         </span>
                       </div>
 
                       <div style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <MapPin size={14} color="#60a5fa" />
                         <span>
-                          GPS: <strong>{liveData?.lat ? `${liveData.lat.toFixed(5)}, ${liveData.lng.toFixed(5)}` : 'Ожидание сигнала GPS'}</strong>
+                          GPS: <strong>{isOnline ? `${liveData.lat.toFixed(5)}, ${liveData.lng.toFixed(5)}` : 'Ожидание первого подключения GPS'}</strong>
                         </span>
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-                        <span>Скорость: {liveData?.speed || 0} км/ч</span>
-                        <span>Статус: {liveData?.status || 'Вне сети'}</span>
+                        <span>Скорость: {isOnline ? (liveData.speed || 0) : 0} км/ч</span>
+                        <span>Статус: {isOnline ? (liveData.status || 'В сети') : 'Вне сети'}</span>
                       </div>
                     </div>
                   );
