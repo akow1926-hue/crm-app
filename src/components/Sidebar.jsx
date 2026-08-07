@@ -7,6 +7,7 @@ import {
   Calculator, 
   Wallet, 
   ChevronLeft,
+  ChevronRight,
   ShieldCheck,
   Truck,
   PhoneCall,
@@ -102,10 +103,10 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="btn-icon"
-          style={{ width: '28px', height: '28px', padding: 0, display: isCollapsed ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: '28px', height: '28px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           title={isCollapsed ? "Развернуть меню" : "Свернуть меню"}
         >
-          <ChevronLeft size={16} />
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>
 
