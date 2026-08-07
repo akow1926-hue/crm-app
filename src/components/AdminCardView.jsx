@@ -39,9 +39,15 @@ import {
 } from '../services/googleSheetsService';
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { broadcastDataChange } from '../services/syncEngine';
+import { getTelegramBotConfig, saveTelegramBotConfig, testTelegramBotToken } from '../services/telegramBotService';
 
 export default function AdminCardView({ orders, setOrders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
   const [activeSection, setActiveSection] = useState('profile');
+
+  // Telegram Courier Bot Config State
+  const [tgBotConfig, setTgBotConfig] = useState(getTelegramBotConfig);
+  const [isTestingBotToken, setIsTestingBotToken] = useState(false);
+  const [botTestResult, setBotTestResult] = useState(null);
 
   // New Employee Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -964,27 +970,126 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
               </div>
             </div>
 
-            {/* Telegram WebApp & Tunnels */}
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '700', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                🤖 Telegram WebApp & Cloudflare Туннели
-              </h3>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {tunnels.map((t, idx) => (
-                  <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '700' }}>{t.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{t.url}</div>
-                    </div>
-                    <span className="badge badge-done">🟢 Online</span>
+            {/* Telegram Courier Bot Control & WebApp Settings Card */}
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid rgba(99, 102, 241, 0.4)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Send size={22} color="#6366f1" />
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>
+                      🤖 Настройка и Управление Telegram-Ботом Курьера
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Управляйте токеном бота, подключением API и синхронизацией функций
+                    </p>
                   </div>
-                ))}
+                </div>
+
+                <span className={`badge ${botTestResult?.success ? 'badge-done' : tgBotConfig.botToken ? 'badge-new' : 'badge-cancel'}`}>
+                  {botTestResult?.success ? `🟢 Бот Активен (@${botTestResult.botInfo.username})` : tgBotConfig.botToken ? '🟡 Токен Введен' : '🔴 Ожидает Токена'}
+                </span>
               </div>
 
-              <button onClick={() => alert('Сигнал перезапуска ботов и туннелей отправлен!')} className="btn btn-secondary">
-                <RefreshCw size={14} /> Перезапустить Туннели Cloudflare
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="input-group">
+                  <label className="input-label">Токен Telegram Бота Курьера (BotFather Token) *</label>
+                  <input 
+                    type="password"
+                    placeholder="7890123456:AAEt..." 
+                    value={tgBotConfig.botToken} 
+                    onChange={(e) => setTgBotConfig({ ...tgBotConfig, botToken: e.target.value })}
+                    className="input-field" 
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="input-group">
+                    <label className="input-label">Username Бота (@username)</label>
+                    <input 
+                      type="text" 
+                      placeholder="CosmoCourier_bot" 
+                      value={tgBotConfig.botUsername} 
+                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, botUsername: e.target.value.replace('@', '') })}
+                      className="input-field" 
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">URL Мобильного WebApp Курьера</label>
+                    <input 
+                      type="text" 
+                      value={tgBotConfig.webAppUrl} 
+                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, webAppUrl: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+                </div>
+
+                {botTestResult && (
+                  <div style={{ 
+                    padding: '10px 12px', 
+                    borderRadius: 'var(--radius-sm)', 
+                    fontSize: '12px', 
+                    background: botTestResult.success ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                    border: `1px solid ${botTestResult.success ? '#10b981' : '#f43f5e'}`
+                  }}>
+                    {botTestResult.success ? (
+                      <div>
+                        ✅ <strong>Успешное подключение к Telegram API!</strong><br />
+                        Имя бота: <strong>{botTestResult.botInfo.name}</strong> (@{botTestResult.botInfo.username}) | ID: {botTestResult.botInfo.id}
+                      </div>
+                    ) : (
+                      <div>❌ <strong>Ошибка подключения:</strong> {botTestResult.error}</div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      if (!tgBotConfig.botToken) {
+                        alert('Введите токен бота!');
+                        return;
+                      }
+                      setIsTestingBotToken(true);
+                      const res = await testTelegramBotToken(tgBotConfig.botToken);
+                      setIsTestingBotToken(false);
+                      setBotTestResult(res);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, fontSize: '12px' }}
+                  >
+                    <RefreshCw size={14} className={isTestingBotToken ? 'animate-spin' : ''} /> 
+                    {isTestingBotToken ? 'Проверка...' : '⚡ Проверить Токен API'}
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      saveTelegramBotConfig(tgBotConfig);
+                      alert('✅ Настройки и токен Telegram Бота Курьера успешно сохранены в CRM!');
+                    }}
+                    className="btn btn-primary"
+                    style={{ flex: 1, fontSize: '12px' }}
+                  >
+                    <CheckCircle size={14} /> Сохранить Токен Бота
+                  </button>
+                </div>
+
+                {tgBotConfig.botUsername && (
+                  <a 
+                    href={`https://t.me/${tgBotConfig.botUsername}?start=courier`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '12px', justifyContent: 'center', background: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366f1' }}
+                  >
+                    <ExternalLink size={14} /> 📲 Ссылка на Telegram Бота для Курьеров (https://t.me/{tgBotConfig.botUsername})
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
