@@ -109,10 +109,7 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
 
   // Staff Management State
   const [staffList, setStaffList] = useState([
-    { id: 'USR-01', username: 'admin', name: 'Администратор (Superuser)', role: 'admin', phone: '+998 90 123 45 67', status: 'active', failedLogins: 0, telegramId: '583920194' },
-    { id: 'USR-02', username: 'disp', name: 'Мадина Сулейманова', role: 'dispatcher', phone: '+998 90 111 22 33', status: 'active', failedLogins: 0, telegramId: '694028102' },
-    { id: 'USR-03', username: 'courier', name: 'Алишер Рахимов', role: 'courier', phone: '+998 90 222 33 44', status: 'active', failedLogins: 0, telegramId: '104928374' },
-    { id: 'USR-04', username: 'washer', name: 'Баходмир Муминов', role: 'washer', phone: '+998 90 444 55 66', status: 'active', failedLogins: 0, telegramId: '984028172' }
+    { id: 'USR-01', username: 'admin', name: 'Администратор (Superuser)', role: 'admin', phone: '+998 90 123 45 67', status: 'active', failedLogins: 0, telegramId: '' }
   ]);
 
   // Pricing State
@@ -120,17 +117,12 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
 
   // Active Sessions
   const [sessions, setSessions] = useState([
-    { id: 'SESS-901', user: 'admin', ip: '192.168.0.106', device: 'Chrome on Windows 11', time: 'Сегодня, 19:14', status: 'active' },
-    { id: 'SESS-902', user: 'courier', ip: '178.218.201.44', device: 'Telegram WebApp (iOS)', time: 'Сегодня, 18:40', status: 'active' },
-    { id: 'SESS-903', user: 'disp', ip: '192.168.0.112', device: 'Firefox on Windows 10', time: 'Сегодня, 16:20', status: 'active' }
+    { id: 'SESS-101', user: 'admin', ip: '127.0.0.1', device: 'Браузер (Текущая сессия)', time: 'Сейчас', status: 'active' }
   ]);
 
   // Audit Logs
   const [auditLogs, setAuditLogs] = useState([
-    { id: 1, time: '19:28:02', user: 'admin', action: 'Просмотр карты администратора', ip: '192.168.0.106' },
-    { id: 2, time: '19:16:40', user: 'admin', action: 'Изменение статуса заказа #1095 -> В цеху', ip: '192.168.0.106' },
-    { id: 3, time: '18:50:11', user: 'courier', action: 'Принятие заказа #1094 на забор', ip: '178.218.201.44' },
-    { id: 4, time: '17:30:45', user: 'disp', action: 'Создание нового клиента Шерзод Абдуллаев', ip: '192.168.0.112' }
+    { id: 1, time: new Date().toLocaleTimeString(), user: 'admin', action: 'Вход в систему Администратора', ip: '127.0.0.1' }
   ]);
 
   // SMS Center
@@ -433,42 +425,51 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                 </div>
               </div>
               <span className="badge badge-pickup" style={{ fontSize: '11px', padding: '6px 12px' }}>
-                🟢 Онлайн курьеров в сети: {Object.keys(courierGpsMap).length || 2}
+                🟢 Онлайн курьеров в сети: {Object.keys(courierGpsMap).length}
               </span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
               {/* Active Couriers List with Live GPS */}
-              {[
-                { name: 'Алишер Рахимов', phone: '+998 90 222 33 44', role: 'courier' },
-                { name: 'Сардор Мирзаев', phone: '+998 90 999 11 22', role: 'courier' }
-              ].map(cour => {
-                const liveData = courierGpsMap[cour.name];
-                return (
-                  <div key={cour.name} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Truck size={16} color="#f59e0b" /> {cour.name}
+              {(() => {
+                const activeCouriers = (registeredUsers || []).filter(u => u.role === 'courier');
+                if (activeCouriers.length === 0 && Object.keys(courierGpsMap).length === 0) {
+                  return (
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
+                      Ожидание регистрации курьеров и первого сеанса GPS геолокации...
+                    </div>
+                  );
+                }
+                const itemsToRender = activeCouriers.length > 0 ? activeCouriers : Object.keys(courierGpsMap).map(name => ({ name }));
+
+                return itemsToRender.map(cour => {
+                  const liveData = courierGpsMap[cour.name];
+                  return (
+                    <div key={cour.name} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Truck size={16} color="#f59e0b" /> {cour.name}
+                        </div>
+                        <span className={`badge ${liveData ? 'badge-done' : 'badge-cancel'}`} style={{ fontSize: '10px' }}>
+                          {liveData ? '🟢 В ЭФИРЕ' : '⚪ ОФЛАЙН'}
+                        </span>
                       </div>
-                      <span className={`badge ${liveData ? 'badge-done' : 'badge-pickup'}`} style={{ fontSize: '10px' }}>
-                        {liveData ? '🟢 В ЭФИРЕ' : '📡 ДЕМО-ТРЕКИНГ'}
-                      </span>
-                    </div>
 
-                    <div style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={14} color="#60a5fa" />
-                      <span>
-                        GPS: <strong>{liveData?.lat ? `${liveData.lat.toFixed(5)}, ${liveData.lng.toFixed(5)}` : '39.6560, 66.9680 (Самарканд)'}</strong>
-                      </span>
-                    </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MapPin size={14} color="#60a5fa" />
+                        <span>
+                          GPS: <strong>{liveData?.lat ? `${liveData.lat.toFixed(5)}, ${liveData.lng.toFixed(5)}` : 'Ожидание сигнала GPS'}</strong>
+                        </span>
+                      </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-                      <span>Скорость: {liveData?.speed || 34} км/ч</span>
-                      <span>Статус: {liveData?.status || 'На линии'}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        <span>Скорость: {liveData?.speed || 0} км/ч</span>
+                        <span>Статус: {liveData?.status || 'Вне сети'}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
 

@@ -26,46 +26,27 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   // Real Samarkand Center Coordinates
   const samarkandCenter = [39.6542, 66.9597];
 
-  // Exact Coordinates for Samarkand Locations
-  const orderCoords = [
-    { id: '1095', lat: 39.6580, lng: 66.9750, district: 'Самарканд, ул. Регистанская, д. 45' },
-    { id: '1094', lat: 39.6450, lng: 66.9350, district: 'Самарканд, ул. Дагбитская, д. 12' },
-    { id: '1093', lat: 39.6620, lng: 66.9480, district: 'Самарканд, мкр-н Гагарина, д. 88' },
-    { id: '1092', lat: 39.6380, lng: 66.9620, district: 'Самарканд, ул. Мирзо Улугбека, д. 19' },
-    { id: '1091', lat: 39.6700, lng: 66.9300, district: 'Самарканд, массив Согдиана, д. 5' },
-    { id: '1090', lat: 39.6510, lng: 66.9800, district: 'Самарканд, ул. Рудаки, д. 22' }
-  ];
-
-  // Dynamic Live GPS Couriers Positions in Samarkand
-  const [couriers, setCouriers] = useState([
-    { id: 'ST-2', name: 'Алишер Рахимов', lat: 39.6560, lng: 66.9680, speed: 36, battery: 88, status: 'Едет на забор в Регистан' },
-    { id: 'ST-3', name: 'Сардор Мирзаев', lat: 39.6420, lng: 66.9420, speed: 41, battery: 94, status: 'Доставка по ул. Дагбитская' }
-  ]);
+  // Dynamic Live GPS Couriers Positions (Populated only from real transmission)
+  const [couriers, setCouriers] = useState([]);
 
   // Sync real-time GPS coordinates from continuous GPS tracking service
   const syncLiveGpsPositions = () => {
     const liveMap = getCourierLocations();
-    setCouriers(prev => prev.map(c => {
-      const liveData = liveMap[c.name];
-      if (liveData && liveData.lat && liveData.lng) {
-        return {
-          ...c,
-          lat: liveData.lat,
-          lng: liveData.lng,
-          speed: liveData.speed || c.speed,
-          battery: liveData.battery || c.battery,
-          status: liveData.status || c.status,
-          isRealGps: true,
-          lastUpdate: liveData.lastUpdate
-        };
-      }
+    const activeCouriersList = Object.keys(liveMap).map(courierName => {
+      const liveData = liveMap[courierName];
       return {
-        ...c,
-        lat: c.lat + (Math.random() - 0.5) * 0.0008,
-        lng: c.lng + (Math.random() - 0.5) * 0.0008,
-        speed: Math.floor(25 + Math.random() * 20)
+        id: `COUR-${courierName}`,
+        name: courierName,
+        lat: liveData.lat,
+        lng: liveData.lng,
+        speed: liveData.speed || 0,
+        battery: liveData.battery || 100,
+        status: liveData.status || 'В сети',
+        isRealGps: true,
+        lastUpdate: liveData.lastUpdate
       };
-    }));
+    });
+    setCouriers(activeCouriersList);
   };
 
   useEffect(() => {
@@ -79,14 +60,29 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
     };
   }, []);
 
+  // Dynamic coordinate helper for real orders
+  const getOrderCoordinates = (order) => {
+    if (order.lat && order.lng) return [order.lat, order.lng];
+    if (order.gpsLocation) {
+      const parts = order.gpsLocation.split(',').map(s => parseFloat(s.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return [parts[0], parts[1]];
+      }
+    }
+    let num = 0;
+    for (let i = 0; i < (order.id || '').length; i++) num += order.id.charCodeAt(i);
+    const latOffset = ((num % 17) - 8) * 0.0035;
+    const lngOffset = (((num * 3) % 19) - 9) * 0.0035;
+    return [samarkandCenter[0] + latOffset, samarkandCenter[1] + lngOffset];
+  };
+
   // Filter orders
   const filteredOrders = orders.filter(order => {
-    const coordsObj = orderCoords.find(c => c.id === order.id);
     const matchesSearch = 
-      order.clientName.toLowerCase().includes(searchMapQuery.toLowerCase()) ||
-      order.phone.includes(searchMapQuery) ||
-      order.id.includes(searchMapQuery) ||
-      (coordsObj && coordsObj.district.toLowerCase().includes(searchMapQuery.toLowerCase()));
+      order.clientName?.toLowerCase().includes(searchMapQuery.toLowerCase()) ||
+      order.phone?.includes(searchMapQuery) ||
+      order.id?.includes(searchMapQuery) ||
+      order.address?.toLowerCase().includes(searchMapQuery.toLowerCase());
 
     let matchesFilter = true;
     if (filterType === 'pickup') matchesFilter = order.status === 'new' || order.status === 'pickup';
@@ -321,11 +317,9 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
 
             {/* Render Real Order Markers on Samarkand Map */}
             {filteredOrders.map((order) => {
-              const coordsObj = orderCoords.find(c => c.id === order.id);
-              if (!coordsObj) return null;
-
+              const coords = getOrderCoordinates(order);
               return (
-                <Marker key={order.id} position={[coordsObj.lat, coordsObj.lng]} icon={createMarkerIcon(order)}>
+                <Marker key={order.id} position={coords} icon={createMarkerIcon(order)}>
                   <Popup>
                     <div style={{ minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

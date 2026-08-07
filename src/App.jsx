@@ -45,26 +45,26 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Persistent Orders & Clients
+  // Persistent Orders & Clients (Clean Production State)
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_orders');
-    return saved ? JSON.parse(saved) : initialOrders;
+    const list = saved ? JSON.parse(saved) : initialOrders;
+    // Filter out old demo fake orders if present
+    return list.filter(o => !['1095', '1094', '1093', '1092', '1091', '1090'].includes(o.id));
   });
 
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_clients');
-    return saved ? JSON.parse(saved) : initialClients;
+    const list = saved ? JSON.parse(saved) : initialClients;
+    // Filter out old demo fake clients if present
+    return list.filter(c => !['C-101', 'C-102', 'C-103', 'C-104'].includes(c.id));
   });
 
-  // Registered System Accounts with Statuses (active, pending, blocked)
+  // Registered System Accounts
   const [registeredUsers, setRegisteredUsers] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_registered_users');
     return saved ? JSON.parse(saved) : [
-      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' },
-      { id: 'USR-2', username: 'disp', pass: 'disp123', name: 'Мадина Сулейманова', role: 'dispatcher', phone: '+998 90 111 22 33', status: 'active', createdDate: '2026-08-02 11:30' },
-      { id: 'USR-3', username: 'courier', pass: 'courier123', name: 'Алишер Рахимов', role: 'courier', phone: '+998 90 222 33 44', status: 'active', createdDate: '2026-08-03 14:00' },
-      { id: 'USR-4', username: 'washer', pass: 'washer123', name: 'Баходмир Муминов', role: 'washer', phone: '+998 90 444 55 66', status: 'active', createdDate: '2026-08-04 09:15' },
-      { id: 'USR-5', username: 'sardor', pass: '123456', name: 'Сардор Абдукаримов', role: 'courier', phone: '+998 90 999 11 22', status: 'pending', createdDate: '2026-08-06 20:00' }
+      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
     ];
   });
 
