@@ -1,0 +1,25 @@
+{
+  "short_name": "CosmoCRM",
+  "name": "Cosmo Cleaning CRM Mobile",
+  "description": "Профессиональная система управления клинингом и стиркой",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["business", "productivity"]
+}
