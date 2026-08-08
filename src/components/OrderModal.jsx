@@ -6,9 +6,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
-import { sendSMSNotification, smsTemplates } from '../services/smsService';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
-import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);

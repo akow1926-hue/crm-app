@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 
 import { saveSupabaseOrder } from '../services/supabaseService';
-import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 
 export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpenNewOrder }) {
   const [draggedOrderId, setDraggedOrderId] = useState(null);
@@ -62,7 +61,6 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
           paymentStatus: targetStatus === 'done' ? 'paid' : order.paymentStatus 
         };
         saveSupabaseOrder(updatedOrder);
-        syncOrderToGoogleSheets(updatedOrder);
         return updatedOrder;
       }
       return order;

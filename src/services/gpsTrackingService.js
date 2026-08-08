@@ -1,5 +1,6 @@
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 import { broadcastDataChange } from './syncEngine';
-import { syncGpsToGoogleSheets } from './googleSheetsService';
 import { updateSupabaseCourierLocation } from './supabaseService';
 
 const STORAGE_KEY = 'cosmo_crm_courier_locations';
@@ -26,6 +27,19 @@ export function getCourierRouteHistory(courierName) {
     console.error('Error reading courier routes:', e);
     return [];
   }
+}
+
+// Request Native or Browser Geolocation Permissions
+export async function requestGpsPermission() {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const status = await Geolocation.requestPermissions();
+      return status.location === 'granted';
+    }
+  } catch (e) {
+    console.warn('Native GPS permission request warning:', e);
+  }
+  return 'geolocation' in navigator;
 }
 
 // Save location update
@@ -70,9 +84,6 @@ export function updateCourierLocation(courierName, positionData) {
   // Broadcast event across tabs/windows/devices
   broadcastDataChange('courier_location_updated', { courierName, location: updatedLocation });
 
-  // Sync to Google Sheets GPS Log
-  syncGpsToGoogleSheets(courierName, positionData).catch(() => {});
-
   // Dispatch custom window event for local reactive UI update
   window.dispatchEvent(new CustomEvent('courier_location_updated', {
     detail: { courierName, location: updatedLocation }
@@ -88,9 +99,32 @@ let activeIntervalId = null;
 export function startContinuousGpsTracking(courierName, onUpdateCallback) {
   if (!courierName) return null;
 
-  // Initial location fetch
-  if ('geolocation' in navigator) {
-    // 1. Continuous position watcher
+  requestGpsPermission();
+
+  // 1. Native Capacitor Geolocation Watcher if on Android / Native Mobile
+  if (Capacitor.isNativePlatform()) {
+    try {
+      Geolocation.watchPosition({ enableHighAccuracy: true, timeout: 15000 }, (position, err) => {
+        if (position && position.coords) {
+          const positionData = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            speed: position.coords.speed ? Math.round(position.coords.speed * 3.6) : 0,
+            heading: position.coords.heading || 0,
+            accuracy: Math.round(position.coords.accuracy),
+            status: 'В движении (GPS передаётся)'
+          };
+          const loc = updateCourierLocation(courierName, positionData);
+          if (onUpdateCallback) onUpdateCallback(loc);
+        }
+      }).then(wId => {
+        activeWatchId = wId;
+      });
+    } catch (e) {
+      console.warn('Native GPS Watch error:', e);
+    }
+  } else if ('geolocation' in navigator) {
+    // 2. Standard Browser Geolocation Watcher
     activeWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         const positionData = {
@@ -113,11 +147,14 @@ export function startContinuousGpsTracking(courierName, onUpdateCallback) {
         timeout: 15000
       }
     );
+  }
 
-    // 2. Fallback periodic ping every 10 seconds to guarantee continuous heartbeat
-    activeIntervalId = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
+  // Fallback periodic ping every 8 seconds to guarantee continuous heartbeat
+  activeIntervalId = setInterval(async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        if (pos && pos.coords) {
           const positionData = {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
@@ -127,22 +164,38 @@ export function startContinuousGpsTracking(courierName, onUpdateCallback) {
           };
           const loc = updateCourierLocation(courierName, positionData);
           if (onUpdateCallback) onUpdateCallback(loc);
-        },
-        (err) => {
-          console.warn('Periodic GPS fetch error:', err.message);
-        },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-      );
-    }, 10000);
-  }
+        }
+      } else if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const positionData = {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
+              accuracy: Math.round(pos.coords.accuracy),
+              status: 'Активен (Периодический пинг)'
+            };
+            const loc = updateCourierLocation(courierName, positionData);
+            if (onUpdateCallback) onUpdateCallback(loc);
+          },
+          (err) => {},
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+      }
+    } catch (e) {}
+  }, 8000);
 
   return { watchId: activeWatchId, intervalId: activeIntervalId };
 }
 
 // Stop continuous tracking
 export function stopContinuousGpsTracking() {
-  if (activeWatchId !== null && 'geolocation' in navigator) {
-    navigator.geolocation.clearWatch(activeWatchId);
+  if (activeWatchId !== null) {
+    if (Capacitor.isNativePlatform()) {
+      Geolocation.clearWatch({ id: activeWatchId });
+    } else if ('geolocation' in navigator) {
+      navigator.geolocation.clearWatch(activeWatchId);
+    }
     activeWatchId = null;
   }
   if (activeIntervalId !== null) {
@@ -150,3 +203,4 @@ export function stopContinuousGpsTracking() {
     activeIntervalId = null;
   }
 }
+

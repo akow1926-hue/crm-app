@@ -172,72 +172,14 @@ export const syncAllOrdersToGoogleSheets = async (orders) => {
 /**
  * 5. Sheet 5: Staff & Employee Sync
  */
-export const syncUserToGoogleSheets = async (user) => {
-  const payload = {
-    targetSheet: 'Сотрудники',
-    id: user.id || `USR-${Date.now()}`,
-    username: user.username || '',
-    name: user.name || '',
-    pass: user.pass || '',
-    role: user.role || 'courier',
-    phone: user.phone || '',
-    status: user.status || 'active',
-    createdDate: user.createdDate || new Date().toLocaleString('ru-RU')
-  };
-  return postToGSheetWebhook(payload);
-};
+export const syncUserToGoogleSheets = async () => ({ success: true });
+export const syncClientToGoogleSheets = async () => ({ success: true });
+export const deleteOrderFromGoogleSheets = async () => ({ success: true });
 
 /**
- * 6. Sheet 6: Clients Sync
- */
-export const syncClientToGoogleSheets = async (client) => {
-  const payload = {
-    targetSheet: 'Клиенты',
-    id: client.id || `CLI-${Date.now()}`,
-    name: client.name || '',
-    phone: client.phone || '',
-    address: client.address || '',
-    totalOrders: client.totalOrders || 0,
-    totalSpent: client.totalSpent || 0,
-    discount: client.discount || 0,
-    district: client.district || 'Самарканд',
-    lastOrder: client.lastOrder || new Date().toLocaleDateString('ru-RU'),
-    notes: client.notes || ''
-  };
-  return postToGSheetWebhook(payload);
-};
-
-/**
- * Delete order from Google Sheets
- */
-export const deleteOrderFromGoogleSheets = async (orderId) => {
-  const payload = {
-    targetSheet: 'Заказы',
-    action: 'DELETE',
-    id: orderId
-  };
-  return postToGSheetWebhook(payload);
-};
-
-/**
- * Fetch full database directly from Google Sheets online (Orders, Users, Clients, Finances, Logs)
+ * Fetch full database directly from Google Sheets online (Disabled - using Supabase as single source of truth)
  */
 export const fetchFromGoogleSheets = async () => {
-  const config = getGoogleSheetConfig();
-  if (!config.webhookUrl) return null;
-
-  try {
-    const res = await fetch(`${config.webhookUrl}?action=getAll`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data;
-    }
-  } catch (err) {
-    console.warn('[GSheets Direct Fetch Error]:', err);
-  }
   return null;
 };
 

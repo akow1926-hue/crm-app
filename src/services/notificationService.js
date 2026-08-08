@@ -1,6 +1,16 @@
-// notificationService.js - Real-time Push Notifications for Roles in Mobile App
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
 
 export const requestNotificationPermission = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const status = await LocalNotifications.requestPermissions();
+      return status.display === 'granted';
+    }
+  } catch (e) {
+    console.warn('Native local notification request error:', e);
+  }
+
   if (!('Notification' in window)) {
     console.log('Notifications not supported in this environment');
     return false;
@@ -21,9 +31,29 @@ export const requestNotificationPermission = async () => {
 /**
  * Send a native Push Notification to the user's phone / browser
  */
-export const sendRolePushNotification = ({ title, body, role = 'all', icon = '/favicon.ico' }) => {
-  // Check if browser/phone notifications are enabled
-  if ('Notification' in window && Notification.permission === 'granted') {
+export const sendRolePushNotification = async ({ title, body, role = 'all', icon = '/favicon.ico' }) => {
+  // 1. Native Capacitor Local Notification for Android / Mobile App
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title,
+            body,
+            id: Math.floor(Math.random() * 100000),
+            schedule: { at: new Date(Date.now() + 100) },
+            sound: null,
+            attachments: null,
+            actionTypeId: '',
+            extra: null
+          }
+        ]
+      });
+    } catch (e) {
+      console.error('Error triggering native notification:', e);
+    }
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    // 2. Browser Web Notification API
     try {
       const notification = new Notification(title, {
         body,

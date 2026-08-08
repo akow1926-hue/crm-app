@@ -336,10 +336,23 @@ img, video, iframe, canvas, svg {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .mobile-only {
   display: none;
+}
+
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.grid-auto-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
 }
 
 /* Responsive Phone Styles */
@@ -377,7 +390,9 @@ img, video, iframe, canvas, svg {
 
   .responsive-header-banner {
     flex-direction: column !important;
-    align-items: stretch !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px !important;
   }
 
   .mobile-hide {
@@ -390,6 +405,10 @@ img, video, iframe, canvas, svg {
 
   .mobile-full-width {
     width: 100% !important;
+  }
+
+  .glass-card {
+    padding: 12px !important;
   }
 
   /* Grid layout fallback overrides for inline styles on phone screens */

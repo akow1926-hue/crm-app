@@ -27,8 +27,8 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   const [searchMapQuery, setSearchMapQuery] = useState('');
   const [showRouteLine, setShowRouteLine] = useState(true);
 
-  // Real Samarkand Center Coordinates
-  const samarkandCenter = [39.6542, 66.9597];
+  // Real Workshop & Cleaning Plant Coordinates (Новая локация Цеха)
+  const samarkandCenter = [39.588238, 66.928319];
 
   // Dynamic Live GPS Couriers Positions
   const [couriers, setCouriers] = useState([]);
@@ -40,13 +40,10 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
     const liveMap = { ...localMap, ...dbMap };
     const systemCouriers = getActiveCouriers(registeredUsers);
 
-    // Dynamic set of all courier names (registered + live)
-    const courierNames = new Set([
-      ...systemCouriers.map(c => c.name || c.username),
-      ...Object.keys(liveMap)
-    ]);
+    // Only allow registered couriers from system accounts
+    const validCourierNames = new Set(systemCouriers.map(c => (c.name || c.username).trim()));
 
-    const activeCouriersList = Array.from(courierNames).map(courierName => {
+    const activeCouriersList = Array.from(validCourierNames).map(courierName => {
       const liveData = liveMap[courierName];
       const hasGps = !!(liveData && liveData.lat && liveData.lng);
       return {

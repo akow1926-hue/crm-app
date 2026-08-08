@@ -26,21 +26,12 @@ import WasherPortal from './components/roles/WasherPortal';
 import { initialOrders, initialClients, activityLogs as initialLogs } from './data/initialData';
 import { triggerAutoSMSForOrder } from './services/smsService';
 import { 
-  syncOrderToGoogleSheets, 
-  deleteOrderFromGoogleSheets, 
-  syncUserToGoogleSheets, 
-  syncClientToGoogleSheets,
-  fetchFromGoogleSheets,
-  getGoogleSheetConfig
-} from './services/googleSheetsService';
-import { 
   requestNotificationPermission, 
   notifyCourierNewOrder, 
   notifyWasherNewItem, 
   notifyDispatcherStatusChange, 
   notifyAdminPayment 
 } from './services/notificationService';
-import { broadcastDataChange, subscribeToRealtimeSync, fetchInitialServerState } from './services/syncEngine';
 import { 
   getSupabaseOrders, 
   saveSupabaseOrder, 
@@ -53,6 +44,7 @@ import {
   deleteSupabaseClient,
   subscribeToSupabaseRealtime 
 } from './services/supabaseService';
+import { flushOfflineQueue, enqueueOfflineMutation } from './services/offlineQueue';
 
 export default function App() {
   // Auth Session State
@@ -64,6 +56,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDbConnected, setIsDbConnected] = useState(true);
 
   // UI Modals & Drawers State
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -71,50 +64,32 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [presetOrderData, setPresetOrderData] = useState(null);
 
-  // Production & Demo State (Persistent in localStorage & Supabase)
-  const [orders, setOrdersState] = useState(() => {
-    const saved = localStorage.getItem('cosmo_crm_orders');
-    return saved ? JSON.parse(saved) : initialOrders;
-  });
-
-  const [clients, setClientsState] = useState(() => {
-    const saved = localStorage.getItem('cosmo_crm_clients');
-    return saved ? JSON.parse(saved) : initialClients;
-  });
-
+  // Production State strictly driven by Supabase Postgres DB
+  const [orders, setOrdersState] = useState([]);
+  const [clients, setClientsState] = useState([]);
   const [logs, setLogs] = useState(initialLogs);
+  const [registeredUsers, setRegisteredUsersState] = useState([
+    { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
+  ]);
 
-  // Registered System Accounts (Only Admin by default)
-  const [registeredUsers, setRegisteredUsersState] = useState(() => {
-    const saved = localStorage.getItem('cosmo_crm_registered_users');
-    return saved ? JSON.parse(saved) : [
-      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
-    ];
-  });
-
-  // Wrapper for setOrders that updates local state, localStorage, and syncs to Supabase DB & Google Sheets
+  // Wrapper for setOrders that updates local state and syncs directly to Supabase DB
   const setOrders = (updater) => {
     setOrdersState(prevOrders => {
       const nextOrders = typeof updater === 'function' ? updater(prevOrders) : updater;
-      try {
-        localStorage.setItem('cosmo_crm_orders', JSON.stringify(nextOrders));
-      } catch (e) {}
 
-      // 1. Identify deleted orders and remove them from DB
+      // 1. Identify deleted orders and remove them from Supabase DB
       prevOrders.forEach(prevOrder => {
         const stillExists = nextOrders.some(n => String(n.id) === String(prevOrder.id));
         if (!stillExists) {
           deleteSupabaseOrder(prevOrder.id);
-          deleteOrderFromGoogleSheets(prevOrder.id);
         }
       });
 
-      // 2. Identify modified or new orders and persist to DB & Google Sheets
+      // 2. Identify modified or new orders and persist to Supabase DB
       nextOrders.forEach(nextOrder => {
         const prevOrder = prevOrders.find(o => String(o.id) === String(nextOrder.id));
         if (!prevOrder || JSON.stringify(prevOrder) !== JSON.stringify(nextOrder)) {
           saveSupabaseOrder(nextOrder);
-          syncOrderToGoogleSheets(nextOrder);
         }
       });
       return nextOrders;
@@ -124,9 +99,6 @@ export default function App() {
   const setClients = (updater) => {
     setClientsState(prevClients => {
       const nextClients = typeof updater === 'function' ? updater(prevClients) : updater;
-      try {
-        localStorage.setItem('cosmo_crm_clients', JSON.stringify(nextClients));
-      } catch (e) {}
 
       // 1. Identify deleted clients
       prevClients.forEach(prevClient => {
@@ -141,7 +113,6 @@ export default function App() {
         const prevClient = prevClients.find(c => String(c.id) === String(nextClient.id));
         if (!prevClient || JSON.stringify(prevClient) !== JSON.stringify(nextClient)) {
           saveSupabaseClient(nextClient);
-          syncClientToGoogleSheets(nextClient);
         }
       });
       return nextClients;
@@ -151,9 +122,6 @@ export default function App() {
   const setRegisteredUsers = (updater) => {
     setRegisteredUsersState(prevUsers => {
       const nextUsers = typeof updater === 'function' ? updater(prevUsers) : updater;
-      try {
-        localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(nextUsers));
-      } catch (e) {}
 
       // 1. Identify deleted users
       prevUsers.forEach(prevUser => {
@@ -168,32 +136,42 @@ export default function App() {
         const prevUser = prevUsers.find(u => String(u.id) === String(newUser.id) || u.username === newUser.username);
         if (!prevUser || JSON.stringify(prevUser) !== JSON.stringify(newUser)) {
           saveSupabaseUser(newUser);
-          syncUserToGoogleSheets(newUser);
         }
       });
       return nextUsers;
     });
   };
 
-  // Initial Data Fetch from Supabase
+  // Initial & Continuous Data Fetch from Spacebase / Supabase DB
   const loadSupabaseData = async () => {
-    const [dbOrders, dbUsers, dbClients] = await Promise.all([
-      getSupabaseOrders(),
-      getSupabaseUsers(),
-      getSupabaseClients()
-    ]);
+    try {
+      flushOfflineQueue().catch(() => {});
 
-    if (Array.isArray(dbOrders)) {
-      setOrdersState(dbOrders);
-      localStorage.setItem('cosmo_crm_orders', JSON.stringify(dbOrders));
-    }
-    if (Array.isArray(dbUsers) && dbUsers.length > 0) {
-      setRegisteredUsersState(dbUsers);
-      localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(dbUsers));
-    }
-    if (Array.isArray(dbClients)) {
-      setClientsState(dbClients);
-      localStorage.setItem('cosmo_crm_clients', JSON.stringify(dbClients));
+      const [dbOrders, dbUsers, dbClients] = await Promise.all([
+        getSupabaseOrders(),
+        getSupabaseUsers(),
+        getSupabaseClients()
+      ]);
+
+      let hasSuccess = false;
+
+      if (Array.isArray(dbOrders)) {
+        setOrdersState(dbOrders);
+        hasSuccess = true;
+      }
+      if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+        setRegisteredUsersState(dbUsers);
+        hasSuccess = true;
+      }
+      if (Array.isArray(dbClients)) {
+        setClientsState(dbClients);
+        hasSuccess = true;
+      }
+
+      setIsDbConnected(hasSuccess);
+    } catch (e) {
+      console.error('Spacebase / Supabase sync error:', e);
+      setIsDbConnected(false);
     }
   };
 
@@ -201,38 +179,25 @@ export default function App() {
     // 1. Load primary state from Supabase Postgres DB
     loadSupabaseData();
 
-    // 2. Fallback sync from Google Sheets / API
-    fetchFromGoogleSheets().then(gsData => {
-      if (gsData) {
-        if (Array.isArray(gsData.orders) && gsData.orders.length > 0) {
-          setOrdersState(gsData.orders);
-          localStorage.setItem('cosmo_crm_orders', JSON.stringify(gsData.orders));
-        }
-        if (Array.isArray(gsData.users) && gsData.users.length > 0) {
-          setRegisteredUsersState(gsData.users);
-          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(gsData.users));
-        }
-        if (Array.isArray(gsData.clients) && gsData.clients.length > 0) {
-          setClientsState(gsData.clients);
-          localStorage.setItem('cosmo_crm_clients', JSON.stringify(gsData.clients));
-        }
-      }
-    });
-
-    // 3. Subscribe to Supabase Realtime Postgres Changes
+    // 2. Subscribe to Supabase Realtime Postgres Changes for instant multi-device updates
     const unsubscribeSupabase = subscribeToSupabaseRealtime((payload) => {
       loadSupabaseData();
     });
 
+    // 3. Periodic 4-second heartbeat sync for Android APK stability over mobile networks
+    const pollInterval = setInterval(() => {
+      loadSupabaseData();
+    }, 4000);
+
     return () => {
       if (unsubscribeSupabase) unsubscribeSupabase();
+      clearInterval(pollInterval);
     };
   }, []);
 
   const handleRegisterUser = (newUser) => {
     setRegisteredUsers(prev => [newUser, ...prev]);
     saveSupabaseUser(newUser);
-    syncUserToGoogleSheets(newUser);
     setLogs(prev => [{ id: Date.now(), text: `Поступила новая заявка на регистрацию: ${newUser.name} (${newUser.username})`, time: 'Только что', type: 'system' }, ...prev]);
   };
 
@@ -304,8 +269,7 @@ export default function App() {
     // Trigger auto SMS dispatcher if conditions match
     triggerAutoSMSForOrder(savedOrder, prevStatus, prevPaymentStatus);
 
-    // Online real-time sync to Google Sheets
-    syncOrderToGoogleSheets(savedOrder);
+    // Direct save to Supabase Postgres DB is handled inside setOrders & saveSupabaseOrder
 
     setSelectedOrder(null);
     setIsNewOrderModalOpen(false);
@@ -322,11 +286,48 @@ export default function App() {
     return <AuthModal onLogin={handleLogin} registeredUsers={registeredUsers} onRegisterUser={handleRegisterUser} />;
   }
 
+  const OfflineBanner = () => !isDbConnected ? (
+    <div style={{
+      background: 'rgba(244, 63, 94, 0.25)',
+      border: '1px solid #f43f5e',
+      color: '#f87171',
+      padding: '12px 16px',
+      borderRadius: '10px',
+      marginBottom: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      fontSize: '13px',
+      fontWeight: '600'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span>⚠️</span>
+        <span>Нет подключения к Интернету или базе данных Spacebase (Supabase). Приложение работает только с онлайн базой данных!</span>
+      </div>
+      <button 
+        onClick={loadSupabaseData} 
+        style={{
+          background: '#f43f5e',
+          color: '#fff',
+          border: 'none',
+          padding: '4px 10px',
+          borderRadius: '6px',
+          fontSize: '11px',
+          cursor: 'pointer',
+          fontWeight: '700'
+        }}
+      >
+        Повторить
+      </button>
+    </div>
+  ) : null;
+
   // Dedicated Window based on User Role:
   // 1. Courier Portal (Отдельный мобильный кабинет Курьера)
   if (currentUser.role === 'courier') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
+        <OfflineBanner />
         <CourierPortal 
           orders={orders} 
           setOrders={setOrders} 
@@ -342,6 +343,7 @@ export default function App() {
   if (currentUser.role === 'washer') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
+        <OfflineBanner />
         <WasherPortal 
           orders={orders} 
           setOrders={setOrders} 
@@ -356,6 +358,7 @@ export default function App() {
   if (currentUser.role === 'dispatcher') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
+        <OfflineBanner />
         <DispatcherPortal 
           orders={orders} 
           setOrders={setOrders} 
@@ -402,6 +405,7 @@ export default function App() {
         />
 
         <main className="page-wrapper">
+          <OfflineBanner />
           {activeTab === 'dashboard' && (
             <DashboardView 
               orders={orders} 

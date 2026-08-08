@@ -442,11 +442,8 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                   return (r.includes('courier') || r.includes('курьер')) && u.status !== 'blocked';
                 });
 
-                // Unique list of all courier display names
-                const allCourierNames = new Set([
-                  ...systemCouriers.map(u => u.name || u.username),
-                  ...Object.keys(courierGpsMap)
-                ]);
+                // Only list registered active couriers from system accounts
+                const allCourierNames = new Set(systemCouriers.map(u => (u.name || u.username).trim()));
 
                 if (allCourierNames.size === 0) {
                   return (
@@ -604,7 +601,6 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                         broadcastDataChange('registered_users', updated);
                         return updated;
                       });
-                      syncUserToGoogleSheets(createdUser).catch(() => {});
                       setIsAddUserModalOpen(false);
                       setNewUserForm({ username: '', name: '', pass: '', role: 'courier', phone: '+998 ' });
                       alert(`Сотрудник ${createdUser.name} (@${createdUser.username}) успешно создан и АКТИВИРОВАН!`);

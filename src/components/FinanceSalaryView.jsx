@@ -18,7 +18,6 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { staffMembers } from '../data/initialData';
-import { syncFinanceToGoogleSheets } from '../services/googleSheetsService';
 
 export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder }) {
   const [activeSubTab, setActiveSubTab] = useState('debts'); // 'debts', 'salaries', 'history'
@@ -93,7 +92,6 @@ export default function FinanceSalaryView({ orders, setOrders, setSelectedOrder 
       };
 
       setTransactions([transObj, ...transactions]);
-      syncFinanceToGoogleSheets(transObj).catch(() => {});
 
       alert(`✅ Долг по заказу #${order.id} успешно погашен!`);
     }

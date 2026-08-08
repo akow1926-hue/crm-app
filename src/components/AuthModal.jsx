@@ -48,7 +48,7 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
         return;
       }
 
-      // Register user with ACTIVE status for instant access
+      // Register user with PENDING status requiring Admin approval
       const newUser = {
         id: `USR-${Date.now()}`,
         username: cleanUsername,
@@ -56,19 +56,12 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
         name: fullName,
         phone: phone,
         role: role,
-        status: 'active',
+        status: 'pending',
         createdDate: new Date().toLocaleString('ru-RU')
       };
 
       onRegisterUser(newUser);
-
-      // Instantly log in the registered user into their workspace
-      onLogin({
-        username: newUser.username,
-        name: newUser.name,
-        role: newUser.role,
-        phone: newUser.phone
-      });
+      setSuccessPendingMsg(newUser);
 
       // Clear fields
       setUsername('');
