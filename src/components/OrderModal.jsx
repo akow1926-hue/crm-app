@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
+import { smsTemplates, sendSMSNotification } from '../services/smsService';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -46,8 +47,10 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
 
   useEffect(() => {
     // Default SMS text template based on status
-    if (formData.clientName) {
-      setSmsText(smsTemplates[0].getText(formData));
+    if (formData.clientName && Array.isArray(smsTemplates) && smsTemplates[0]?.getText) {
+      try {
+        setSmsText(smsTemplates[0].getText(formData));
+      } catch (e) {}
     }
   }, [formData.id, formData.clientName]);
 
