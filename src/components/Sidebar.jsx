@@ -15,7 +15,8 @@ import {
   Sparkles,
   MapPin,
   BarChart3,
-  Smartphone
+  Smartphone,
+  Tag
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollapsed, setIsCollapsed }) {
@@ -38,6 +39,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
     {
       title: 'БИЗНЕС И ФИНАНСЫ',
       items: [
+        { id: 'servicesCatalog', label: 'Услуги и Прайс-лист', icon: Tag, badge: 'Прайс' },
         { id: 'clients', label: 'Клиенты (CRM)', icon: Users },
         { id: 'calculator', label: 'Калькулятор', icon: Calculator },
         { id: 'finance', label: 'Финансы & Зарплата', icon: Wallet },

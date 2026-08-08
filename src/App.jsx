@@ -13,6 +13,7 @@ import CalculatorView from './components/CalculatorView';
 import FinanceSalaryView from './components/FinanceSalaryView';
 import SMSManagementView from './components/SMSManagementView';
 import AdminCardView from './components/AdminCardView';
+import ServicesCatalogView from './components/ServicesCatalogView';
 import YandexLogisticsMap from './components/YandexLogisticsMap';
 import OrderModal from './components/OrderModal';
 import NotificationDrawer from './components/NotificationDrawer';
@@ -488,6 +489,10 @@ export default function App() {
               registeredUsers={registeredUsers}
               setRegisteredUsers={setRegisteredUsers}
             />
+          )}
+
+          {activeTab === 'servicesCatalog' && (
+            <ServicesCatalogView />
           )}
         </main>
       </div>
