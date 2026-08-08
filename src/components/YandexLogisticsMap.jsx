@@ -340,16 +340,7 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
             {filteredOrders.map((order) => {
               const coords = getOrderCoordinates(order);
               return (
-                <Marker 
-                  key={order.id} 
-                  position={coords} 
-                  icon={createMarkerIcon(order)}
-                  eventHandlers={{
-                    click: () => {
-                      if (setSelectedOrder) setSelectedOrder(order);
-                    }
-                  }}
-                >
+                <Marker key={order.id} position={coords} icon={createMarkerIcon(order)}>
                   <Popup>
                     <div style={{ minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
