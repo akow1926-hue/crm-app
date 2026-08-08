@@ -518,7 +518,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               >
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
                       #{order.id}
                     </span>
@@ -551,18 +551,25 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   </div>
                 </div>
 
-                {/* Client Info & Direct Phone Call */}
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>{order.clientName}</div>
-                  <a 
-                    href={`tel:${order.phone}`} 
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--accent-primary)', fontWeight: '700', marginTop: '4px', textDecoration: 'none' }}
-                  >
-                    <Phone size={14} /> {order.phone} (Позвонить)
-                  </a>
+                {/* Client Info & Direct Phone Call & Language */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>{order.clientName}</div>
+                    <a 
+                      href={`tel:${order.phone}`} 
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--accent-primary)', fontWeight: '700', marginTop: '4px', textDecoration: 'none' }}
+                    >
+                      <Phone size={14} /> {order.phone} (Позвонить)
+                    </a>
+                  </div>
+                  {order.language && (
+                    <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.2)', border: '1px solid rgba(99, 102, 241, 0.4)', color: '#818cf8', fontSize: '11px' }}>
+                      🌐 {order.language}
+                    </span>
+                  )}
                 </div>
 
-                {/* Address & Yandex.Navigator */}
+                {/* Address, Landmark & Yandex.Navigator */}
                 <div style={{
                   background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid var(--border-color)',
@@ -576,10 +583,15 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   <div style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
                     <MapPin size={16} color="var(--accent-secondary)" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <div>
-                      <span>{order.address}</span>
+                      <div style={{ color: '#fff', fontWeight: '600' }}>{order.address}</div>
                       {order.landmark && (
-                        <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '2px' }}>
-                          Ориентир: {order.landmark}
+                        <div style={{ fontSize: '11.5px', color: '#f59e0b', marginTop: '3px', fontWeight: '600' }}>
+                          📍 Ориентир: {order.landmark}
+                        </div>
+                      )}
+                      {order.timeSlot && (
+                        <div style={{ fontSize: '11.5px', color: '#38bdf8', marginTop: '2px' }}>
+                          🕒 Удобное время: {order.timeSlot}
                         </div>
                       )}
                     </div>
@@ -589,23 +601,40 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                     target="_blank" 
                     rel="noreferrer"
                     className="btn btn-secondary" 
-                    style={{ fontSize: '11px', padding: '4px 8px', flexShrink: 0, color: order.gpsLocation ? '#10b981' : '#38bdf8' }}
+                    style={{ fontSize: '11px', padding: '6px 10px', flexShrink: 0, color: order.gpsLocation ? '#10b981' : '#38bdf8' }}
                   >
-                    <Navigation size={12} /> {order.gpsLocation ? '📍 Маршрут по GPS' : 'Навигатор'}
+                    <Navigation size={13} /> {order.gpsLocation ? '📍 GPS Маршрут' : 'Навигатор'}
                   </a>
                 </div>
 
-                {/* Items & Notes */}
+                {/* Urgent Delivery Details */}
+                {order.urgent && (order.deliveryDate || order.deliveryTime) && (
+                  <div style={{ background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', color: '#f43f5e', fontSize: '11.5px', fontWeight: '700' }}>
+                    ⏰ Обязательное время сдачи: {order.deliveryDate || ''} {order.deliveryTime || ''}
+                  </div>
+                )}
+
+                {/* Dispatcher Order Notes / Comment Box */}
+                {order.notes && (
+                  <div style={{
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    color: '#f59e0b',
+                    fontSize: '12.5px',
+                    lineHeight: '1.4'
+                  }}>
+                    💬 <strong>Комментарий к заказу:</strong> {order.notes}
+                  </div>
+                )}
+
+                {/* Items & Pricing Info */}
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  <strong>Позиции:</strong> {order.items ? order.items.map(it => `${it.name} (${it.qty})`).join(', ') : 'Ковры / изделия'}
+                  <strong>Позиции:</strong> {order.items && order.items.length > 0 ? order.items.map(it => `${it.name} (${it.qty})`).join(', ') : 'Не указаны (Забор курьером)'}
                   {order.agreedPricePerM2 && (
                     <div style={{ color: '#10b981', fontWeight: '700', marginTop: '2px' }}>
-                      🤝 Договоренная цена: {order.agreedPricePerM2.toLocaleString()} сум/м² (Стандарт: {order.standardPricePerM2 || 14000} сум)
-                    </div>
-                  )}
-                  {order.gpsLocation && (
-                    <div style={{ color: '#38bdf8', fontSize: '11px', marginTop: '2px' }}>
-                      📍 GPS локация забора зафиксирована ({order.gpsLocation})
+                      🤝 Договоренная цена: {order.agreedPricePerM2.toLocaleString()} сум/м²
                     </div>
                   )}
                 </div>
