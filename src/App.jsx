@@ -73,6 +73,97 @@ export default function App() {
     { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
   ]);
 
+  // Auto-sync clients database whenever orders are updated or completed!
+  const syncClientsFromOrders = (allOrders) => {
+    setClientsState(prevClients => {
+      let updatedClients = [...prevClients];
+
+      allOrders.forEach(ord => {
+        const phoneNorm = String(ord.clientPhone || ord.phone || '').trim();
+        if (!phoneNorm || phoneNorm === '+998') return;
+
+        const existingIndex = updatedClients.findIndex(c => 
+          String(c.phone || '').replace(/\s+/g, '') === phoneNorm.replace(/\s+/g, '') ||
+          (c.name && ord.clientName && c.name.toLowerCase().trim() === ord.clientName.toLowerCase().trim())
+        );
+
+        const ordAmount = parseFloat(ord.totalAmount || ord.agreedAmount || 0);
+
+        const orderRecord = {
+          id: ord.id,
+          date: ord.createdDate || new Date().toISOString().split('T')[0],
+          status: ord.status,
+          amount: ordAmount,
+          itemsCount: ord.itemsCount || ord.items?.length || 1
+        };
+
+        if (existingIndex >= 0) {
+          const existing = updatedClients[existingIndex];
+          const history = existing.orderHistory || [];
+          const hasOrderInHistory = history.some(h => String(h.id) === String(ord.id));
+
+          const newHistory = hasOrderInHistory 
+            ? history.map(h => String(h.id) === String(ord.id) ? orderRecord : h)
+            : [...history, orderRecord];
+
+          const clientOrders = allOrders.filter(o => 
+            String(o.clientPhone || o.phone || '').replace(/\s+/g, '') === phoneNorm.replace(/\s+/g, '') ||
+            (o.clientName && existing.name && o.clientName.toLowerCase().trim() === existing.name.toLowerCase().trim())
+          );
+
+          const totalOrdersCount = clientOrders.length;
+          const totalLtv = clientOrders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || 0)), 0);
+
+          let tier = 'Standard';
+          let discountPercent = 0;
+          if (totalOrdersCount >= 5 || totalLtv >= 500000) {
+            tier = 'VIP';
+            discountPercent = 10;
+          } else if (totalOrdersCount >= 2) {
+            tier = 'Premier';
+            discountPercent = 5;
+          }
+
+          updatedClients[existingIndex] = {
+            ...existing,
+            name: ord.clientName || existing.name,
+            phone: ord.clientPhone || ord.phone || existing.phone,
+            address: ord.address || existing.address,
+            district: ord.district || existing.district || '',
+            landmark: ord.landmark || existing.landmark || '',
+            language: ord.language || existing.language || 'Русский',
+            totalOrders: totalOrdersCount,
+            ltv: totalLtv,
+            tier: tier,
+            discountPercent: discountPercent,
+            orderHistory: newHistory
+          };
+        } else {
+          // Create new client in CRM database automatically!
+          const newClientObj = {
+            id: `C-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: ord.clientName || 'Новый клиент',
+            phone: phoneNorm,
+            address: ord.address || 'Самарканд',
+            district: ord.district || 'Сиёб',
+            landmark: ord.landmark || '',
+            language: ord.language || 'Русский',
+            totalOrders: 1,
+            ltv: ordAmount,
+            tier: 'Standard',
+            discountPercent: 0,
+            notes: `Автоматически создан по заказу #${ord.id}`,
+            orderHistory: [orderRecord]
+          };
+          updatedClients.push(newClientObj);
+          saveSupabaseClient(newClientObj);
+        }
+      });
+
+      return updatedClients;
+    });
+  };
+
   // Wrapper for setOrders that updates local state and syncs directly to Supabase DB
   const setOrders = (updater) => {
     setOrdersState(prevOrders => {
@@ -93,6 +184,10 @@ export default function App() {
           saveSupabaseOrder(nextOrder);
         }
       });
+
+      // 3. Auto-sync clients database
+      setTimeout(() => syncClientsFromOrders(nextOrders), 0);
+
       return nextOrders;
     });
   };
