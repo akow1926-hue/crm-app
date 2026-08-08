@@ -80,6 +80,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [customSmsText, setCustomSmsText] = useState('');
   const [smsSending, setSmsSending] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState(null);
+  const [receiptModalOrder, setReceiptModalOrder] = useState(null);
 
   // Load dynamic service catalog (configured by Admin)
   const availableServices = (() => {
@@ -382,91 +383,9 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     setSmsModalOrder(null);
   };
 
-  // Print Receipt
+  // Open Printable Electronic Receipt Modal
   const handlePrintReceipt = (order) => {
-    const printWindow = window.open('', '_blank', 'width=420,height=700');
-    const orderSum = order.totalAmount || order.agreedAmount || 0;
-    const paidSum = order.paidAmount !== undefined ? order.paidAmount : orderSum;
-    const clientPhone = order.phone || order.clientPhone || '-';
-    const dispatcher = order.dispatcherName || order.createdBy || 'Мадина (Диспетчер)';
-    const comment = order.notes || order.comment || 'Без дополнительных примечаний';
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Чек Cosmo Cleaning #${order.id}</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; padding: 18px; font-size: 13px; color: #111; line-height: 1.4; }
-            .header { text-align: center; margin-bottom: 14px; border-bottom: 2px dashed #333; padding-bottom: 10px; }
-            .logo { font-size: 18px; font-weight: 900; letter-spacing: 0.5px; }
-            .sub { font-size: 11px; color: #555; margin-top: 2px; }
-            .badge { display: inline-block; background: #eee; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }
-            .row { display: flex; justify-content: space-between; margin: 5px 0; }
-            .label { color: #555; font-weight: 500; }
-            .val { font-weight: 700; text-align: right; }
-            .box { background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin: 8px 0; }
-            .total { font-weight: 900; border-top: 2px solid #111; padding-top: 8px; margin-top: 10px; font-size: 15px; }
-            .footer { text-align: center; margin-top: 16px; font-size: 11px; color: #666; border-top: 1px dashed #ccc; padding-top: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo">✨ COSMO CLEANING SAMARKAND ✨</div>
-            <div class="sub">Профессиональная стирка ковров и химчистка</div>
-            <div style="margin-top: 6px;"><span class="badge">ЧЕК ДОСТАВКИ №${order.id}</span></div>
-            <div class="sub">${new Date().toLocaleString('ru-RU')}</div>
-          </div>
-
-          <div class="row"><span class="label">Клиент:</span><span class="val">${order.clientName || 'Клиент'}</span></div>
-          <div class="row"><span class="label">Телефон:</span><span class="val">${clientPhone}</span></div>
-          <div class="row"><span class="label">Язык клиента:</span><span class="val">${order.language || 'Русский'}</span></div>
-          <div class="row"><span class="label">Район:</span><span class="val">${order.district || 'Самарканд'}</span></div>
-          <div class="row"><span class="label">Адрес:</span><span class="val">${order.address || '-'}</span></div>
-          ${order.landmark ? `<div class="row"><span class="label">Ориентир:</span><span class="val">${order.landmark}</span></div>` : ''}
-          <div class="row"><span class="label">Диспетчер:</span><span class="val">${dispatcher}</span></div>
-          <div class="row"><span class="label">Курьер:</span><span class="val">${courierName}</span></div>
-
-          <div class="box">
-            <div style="font-weight: bold; margin-bottom: 4px; font-size: 11.5px;">💬 Комментарий диспетчера:</div>
-            <div>${comment}</div>
-          </div>
-
-          <div class="box">
-            <div style="font-weight: bold; margin-bottom: 4px; font-size: 11.5px;">🧺 Позиции / Ковры:</div>
-            ${order.items && order.items.length > 0 ? order.items.map(it => `
-              <div class="row" style="font-size: 12px;">
-                <span>${it.name} x${it.qty || 1}</span>
-                <span>${(it.total || it.price || 0).toLocaleString()} сум</span>
-              </div>
-            `).join('') : '<div style="font-size: 12px;">Ковры / Изделия (Забор)</div>'}
-            ${order.agreedPricePerM2 ? `<div style="font-size: 11.5px; color: #16a34a; font-weight: bold; margin-top: 4px;">🤝 Договорная ставка: ${order.agreedPricePerM2.toLocaleString()} сум/м²</div>` : ''}
-          </div>
-
-          <div class="row total">
-            <span>ДОГОВОРНАЯ СУММА:</span>
-            <span>${orderSum.toLocaleString()} сум</span>
-          </div>
-          <div class="row">
-            <span class="label">Оплачено:</span>
-            <span class="val" style="color: #16a34a;">${paidSum.toLocaleString()} сум</span>
-          </div>
-          <div class="row">
-            <span class="label">Способ оплаты:</span>
-            <span class="val">${order.paymentType || 'Наличные'}</span>
-          </div>
-
-          <div class="footer">
-            <p><strong>Спасибо, что выбрали Cosmo Cleaning!</strong></p>
-            <p>Служба поддержки: +998 90 123 45 67</p>
-            <p>Гарантия чистоты и бережной сушки</p>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    setReceiptModalOrder(order);
   };
 
   // Reassign Order
@@ -1563,6 +1482,146 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Electronic Printable Receipt with explicit Close & Print buttons */}
+      {receiptModalOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 250,
+          padding: '16px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '460px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            background: '#ffffff',
+            color: '#1e293b',
+            borderRadius: '16px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            border: '2px solid #3b82f6'
+          }}>
+            {/* Header bar with Close Button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px dashed #cbd5e1', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Printer size={20} color="#2563eb" />
+                <span style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>Электронный Чек #{receiptModalOrder.id}</span>
+              </div>
+
+              <button 
+                onClick={() => setReceiptModalOrder(null)} 
+                className="btn"
+                style={{ background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}
+                title="Закрыть чек"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Printable Area Content */}
+            <div id="printable-receipt-area" style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+              <div style={{ textAlign: 'center', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a' }}>✨ COSMO CLEANING SAMARKAND ✨</div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Профессиональная чистка ковров и текстиля</div>
+                <div style={{ marginTop: '6px', fontSize: '12px', fontWeight: '800', background: '#e0f2fe', color: '#0369a1', display: 'inline-block', padding: '3px 10px', borderRadius: '6px' }}>
+                  ЧЕК ДОСТАВКИ №{receiptModalOrder.id}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                  {new Date().toLocaleString('ru-RU')}
+                </div>
+              </div>
+
+              {/* Client & Courier Info */}
+              <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12.5px' }}>
+                <div>👤 <strong>Клиент:</strong> {receiptModalOrder.clientName || 'Клиент'}</div>
+                <div>📞 <strong>Телефон:</strong> {receiptModalOrder.phone || receiptModalOrder.clientPhone || '-'}</div>
+                <div>🏠 <strong>Адрес:</strong> {receiptModalOrder.district ? `[${receiptModalOrder.district}] ` : ''}{receiptModalOrder.address || '-'}</div>
+                {receiptModalOrder.landmark && <div>📍 <strong>Ориентир:</strong> {receiptModalOrder.landmark}</div>}
+                <div>🗣️ <strong>Язык общения:</strong> {receiptModalOrder.language || 'Русский'}</div>
+                <div>🚚 <strong>Курьер:</strong> {courierName}</div>
+                <div>📞 <strong>Диспетчер:</strong> {receiptModalOrder.dispatcherName || 'Мадина'}</div>
+              </div>
+
+              {/* Comment */}
+              {receiptModalOrder.notes && (
+                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', color: '#92400e' }}>
+                  💬 <strong>Примечание:</strong> {receiptModalOrder.notes}
+                </div>
+              )}
+
+              {/* Items List */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', background: '#fafafa' }}>
+                <div style={{ fontWeight: '800', fontSize: '12px', color: '#475569', marginBottom: '6px' }}>🧺 Изделия / Позиции заказа:</div>
+                {receiptModalOrder.items && receiptModalOrder.items.length > 0 ? (
+                  receiptModalOrder.items.map((it, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: idx < receiptModalOrder.items.length - 1 ? '1px dashed #e2e8f0' : 'none', fontSize: '12.5px' }}>
+                      <span style={{ fontWeight: '700' }}>{it.name} x{it.qty || 1}</span>
+                      <span style={{ fontWeight: '800', color: '#0f172a' }}>{(it.total || it.price || 0).toLocaleString()} сум</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Изделия (замерены в цеху)</div>
+                )}
+              </div>
+
+              {/* Total Summary */}
+              <div style={{ borderTop: '2px solid #0f172a', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
+                  <span>ИТОГОВАЯ СУММА:</span>
+                  <span>{(receiptModalOrder.totalAmount || receiptModalOrder.agreedAmount || 0).toLocaleString()} сум</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', fontWeight: '700' }}>
+                  <span>Оплаченная сумма:</span>
+                  <span>{(receiptModalOrder.paidAmount !== undefined ? receiptModalOrder.paidAmount : (receiptModalOrder.totalAmount || 0)).toLocaleString()} сум</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
+                  <span>Способ оплаты:</span>
+                  <span style={{ fontWeight: '700', color: '#2563eb' }}>{receiptModalOrder.paymentType || 'Наличные / Click'}</span>
+                </div>
+              </div>
+
+              {/* Footer info */}
+              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginTop: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
+                <div><strong>Спасибо, что выбрали Cosmo Cleaning!</strong></div>
+                <div>Служба поддержки: +998 90 123 45 67</div>
+              </div>
+            </div>
+
+            {/* Action Buttons: Print & Close */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <button 
+                onClick={() => {
+                  window.print();
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1, background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', padding: '10px', fontSize: '13px', fontWeight: '800' }}
+              >
+                <Printer size={16} /> Распечатать / PDF
+              </button>
+
+              <button 
+                onClick={() => setReceiptModalOrder(null)}
+                className="btn btn-secondary"
+                style={{ flex: 1, background: '#e2e8f0', color: '#0f172a', padding: '10px', fontSize: '13px', fontWeight: '800' }}
+              >
+                ❌ Выйти и Вернуться
+              </button>
+            </div>
           </div>
         </div>
       )}
