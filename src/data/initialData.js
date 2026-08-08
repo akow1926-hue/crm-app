@@ -1,6 +1,6 @@
 export const initialOrders = [
   {
-    id: "5201",
+    id: "5251",
     clientName: "Шерзод Рахимов",
     clientPhone: "+998 90 450 12 34",
     address: "г. Самарканд, ул. Мирзо Улугбека, д. 45, кв. 12",
@@ -22,7 +22,7 @@ export const initialOrders = [
     notes: "Срочная стирка, забрать с 3-го этажа"
   },
   {
-    id: "5202",
+    id: "5252",
     clientName: "Наргиза Каримова",
     clientPhone: "+998 93 320 88 99",
     address: "г. Самарканд, массив Согдиана, д. 18",
@@ -43,7 +43,7 @@ export const initialOrders = [
     notes: "Оплачено через Click. Упаковать в защитную пленку."
   },
   {
-    id: "5203",
+    id: "5253",
     clientName: "ООО 'Самарканд Отель'",
     clientPhone: "+998 66 233 00 11",
     address: "г. Самарканд, ул. Университетский бульвар, д. 5",

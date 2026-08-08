@@ -14,10 +14,11 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
   const activeWashers = getActiveWashers(registeredUsers);
 
   const getNextSequentialId = () => {
-    if (!allOrders || allOrders.length === 0) return '5204';
+    if (!allOrders || allOrders.length === 0) return '5254';
     const nums = allOrders.map(o => parseInt(o.id, 10)).filter(n => !isNaN(n) && n > 1000);
-    if (nums.length === 0) return '5204';
-    return String(Math.max(...nums) + 1);
+    if (nums.length === 0) return '5254';
+    const maxId = Math.max(...nums);
+    return String(Math.max(maxId + 1, 5254));
   };
 
   const buildInitialFormData = (targetOrder) => ({
