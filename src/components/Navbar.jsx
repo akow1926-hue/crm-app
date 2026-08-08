@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck } from 'lucide-react';
+import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck, Users, Tag } from 'lucide-react';
 
-export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout }) {
+export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout, activeTab, setActiveTab }) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -110,6 +110,27 @@ export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, no
             </span>
           )}
         </button>
+
+        {/* Quick Navigation Shortcuts */}
+        {setActiveTab && (
+          <div className="mobile-hide" style={{ display: 'flex', gap: '6px' }}>
+            <button 
+              onClick={() => setActiveTab('clients')} 
+              className="btn btn-secondary" 
+              style={{ padding: '6px 12px', height: '38px', fontSize: '12.5px', background: activeTab === 'clients' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.04)', borderColor: activeTab === 'clients' ? '#3b82f6' : 'var(--border-color)', color: activeTab === 'clients' ? '#60a5fa' : '#fff' }}
+            >
+              <Users size={15} /> 👥 Клиенты
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('servicesCatalog')} 
+              className="btn btn-secondary" 
+              style={{ padding: '6px 12px', height: '38px', fontSize: '12.5px', background: activeTab === 'servicesCatalog' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.04)', borderColor: activeTab === 'servicesCatalog' ? '#10b981' : 'var(--border-color)', color: activeTab === 'servicesCatalog' ? '#34d399' : '#fff' }}
+            >
+              <Tag size={15} /> 🏷️ Прайс-лист
+            </button>
+          </div>
+        )}
 
         {/* Primary Action Button */}
         <button onClick={onOpenNewOrder} className="btn btn-primary" style={{ padding: '8px 12px', height: '38px' }}>

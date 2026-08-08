@@ -498,6 +498,8 @@ export default function App() {
           onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
           currentUser={currentUser}
           onLogout={handleLogout}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
         />
 
         <main className="page-wrapper">
