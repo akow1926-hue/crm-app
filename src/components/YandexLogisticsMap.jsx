@@ -388,14 +388,6 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
                           )}
                         </select>
                       </div>
-
-                      <button 
-                        onClick={() => setSelectedOrder(order)} 
-                        className="btn btn-primary"
-                        style={{ fontSize: '11px', padding: '4px 8px', marginTop: '4px' }}
-                      >
-                        Открыть Карточку Заказа
-                      </button>
                     </div>
                   </Popup>
                 </Marker>
