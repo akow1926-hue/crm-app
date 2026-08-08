@@ -65,7 +65,76 @@ export default function ServicesCatalogView() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
-      {/* Header Banner */}
+      {/* Logo & Branding Customization Card */}
+      <div className="glass-card" style={{
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 17, 40, 0.98) 100%)',
+        border: '1.5px solid #38bdf8',
+        borderRadius: '16px',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '20px' }}>🎨</span>
+            <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#fff' }}>
+              Настройка Логотипа Компании и Названия (Брендинг)
+            </h3>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'center' }}>
+          {/* Logo Preview */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <img 
+              src={localStorage.getItem('cosmo_crm_logo_url') || '/logo.jpg'} 
+              alt="Preview Logo" 
+              style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover', border: '2px solid #38bdf8', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.3)' }}
+              onError={(e) => { e.target.onerror = null; e.target.src = '/logo.jpg'; }}
+            />
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>
+                {localStorage.getItem('cosmo_crm_company_name') || 'COSMO CLEANING'}
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Логотип отображается в боковом меню, чеках и мобильных приложениях
+              </div>
+            </div>
+          </div>
+
+          {/* Form inputs */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="input-group">
+              <label className="input-label">Название компании в меню CRM *</label>
+              <input 
+                type="text"
+                defaultValue={localStorage.getItem('cosmo_crm_company_name') || 'COSMO CLEANING'}
+                onChange={(e) => {
+                  localStorage.setItem('cosmo_crm_company_name', e.target.value);
+                }}
+                className="input-field"
+                placeholder="Например: COSMO CLEANING"
+                style={{ fontSize: '14px', fontWeight: '700' }}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Ссылка на изображение Логотипа (URL / Файл) *</label>
+              <input 
+                type="text"
+                defaultValue={localStorage.getItem('cosmo_crm_logo_url') || '/logo.jpg'}
+                onChange={(e) => {
+                  localStorage.setItem('cosmo_crm_logo_url', e.target.value);
+                }}
+                className="input-field"
+                placeholder="Например: /logo.jpg или https://domain.com/logo.png"
+                style={{ fontSize: '13px', fontWeight: '600' }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="glass-card" style={{
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(6, 182, 212, 0.15) 100%)',
         border: '1.5px solid var(--accent-secondary)',

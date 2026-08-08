@@ -79,25 +79,29 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
         borderBottom: '1px solid var(--border-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            background: 'var(--accent-gradient)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--shadow-glow)',
-            flexShrink: 0
-          }}>
-            <Sparkles size={22} color="#fff" />
-          </div>
+          <img 
+            src={localStorage.getItem('cosmo_crm_logo_url') || '/logo.jpg'} 
+            alt="Cosmo Logo" 
+            style={{ 
+              width: '42px', 
+              height: '42px', 
+              borderRadius: '12px', 
+              objectFit: 'cover', 
+              border: '1.5px solid var(--accent-secondary)',
+              boxShadow: '0 0 12px rgba(6, 182, 212, 0.3)',
+              flexShrink: 0 
+            }} 
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/logo.jpg';
+            }}
+          />
           {!isCollapsed && (
             <div>
-              <h1 style={{ fontSize: '16px', fontWeight: '800', letterSpacing: '-0.3px', background: 'linear-gradient(135deg, #fff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                COSMO CRM
+              <h1 style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '-0.3px', background: 'linear-gradient(135deg, #fff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                {localStorage.getItem('cosmo_crm_company_name') || 'COSMO CLEANING'}
               </h1>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '500' }}>Cleaning Service v3.0</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Cleaning Service v3.0</span>
             </div>
           )}
         </div>
