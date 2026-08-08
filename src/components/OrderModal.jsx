@@ -16,7 +16,8 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
   const buildInitialFormData = (targetOrder) => ({
     id: targetOrder?.id || `${Math.floor(5200 + Math.random() * 500)}`,
     clientName: targetOrder?.clientName || '',
-    phone: targetOrder?.phone || '+998 ',
+    phone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',
+    clientPhone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',
     address: targetOrder?.address || '',
     district: targetOrder?.district || 'Сиёб',
     language: targetOrder?.language || 'Русский',
@@ -28,11 +29,14 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
     status: targetOrder?.status || 'new',
     paymentStatus: targetOrder?.paymentStatus || 'unpaid',
     items: targetOrder?.items || [],
-    totalAmount: targetOrder?.totalAmount || 0,
+    totalAmount: targetOrder?.totalAmount || targetOrder?.agreedAmount || 0,
     paidAmount: targetOrder?.paidAmount || 0,
     assignedCourier: targetOrder?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
     assignedWasher: targetOrder?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
-    notes: targetOrder?.notes || ''
+    dispatcherName: targetOrder?.dispatcherName || targetOrder?.createdBy || 'Мадина (Диспетчер)',
+    createdDate: targetOrder?.createdDate || new Date().toLocaleString('ru-RU'),
+    agreedPricePerM2: targetOrder?.agreedPricePerM2 || null,
+    notes: targetOrder?.notes || targetOrder?.comment || ''
   });
 
   const [formData, setFormData] = useState(() => buildInitialFormData(order));
