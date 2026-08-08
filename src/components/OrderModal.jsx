@@ -9,12 +9,19 @@ import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
 import { smsTemplates, sendSMSNotification } from '../services/smsService';
 
-export default function OrderModal({ order, onClose, onSave, registeredUsers }) {
+export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [] }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
   const activeWashers = getActiveWashers(registeredUsers);
 
+  const getNextSequentialId = () => {
+    if (!allOrders || allOrders.length === 0) return '5204';
+    const nums = allOrders.map(o => parseInt(o.id, 10)).filter(n => !isNaN(n) && n > 1000);
+    if (nums.length === 0) return '5204';
+    return String(Math.max(...nums) + 1);
+  };
+
   const buildInitialFormData = (targetOrder) => ({
-    id: targetOrder?.id || `${Math.floor(5200 + Math.random() * 500)}`,
+    id: targetOrder?.id || getNextSequentialId(),
     clientName: targetOrder?.clientName || '',
     phone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',
     clientPhone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',

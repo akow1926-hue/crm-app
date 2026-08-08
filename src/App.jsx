@@ -465,12 +465,13 @@ export default function App() {
           registeredUsers={registeredUsers}
         />
         {(selectedOrder || isNewOrderModalOpen) && (
-          <OrderModal 
-            order={presetOrderData ? { ...presetOrderData, id: `${Math.floor(1096 + Math.random() * 100)}`, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
-            onClose={() => { setSelectedOrder(null); setIsNewOrderModalOpen(false); setPresetOrderData(null); }}
-            onSave={handleSaveOrder}
-            registeredUsers={registeredUsers}
-          />
+        <OrderModal 
+          order={presetOrderData ? { ...presetOrderData, id: null, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
+          onClose={() => { setSelectedOrder(null); setIsNewOrderModalOpen(false); setPresetOrderData(null); }}
+          onSave={handleSaveOrder}
+          registeredUsers={registeredUsers}
+          allOrders={orders}
+        />
         )}
       </div>
     );
@@ -604,10 +605,11 @@ export default function App() {
       {/* Modals & Slide-overs */}
       {(selectedOrder || isNewOrderModalOpen) && (
         <OrderModal 
-          order={presetOrderData ? { ...presetOrderData, id: `${Math.floor(1096 + Math.random() * 100)}`, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
+          order={presetOrderData ? { ...presetOrderData, id: null, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
           onClose={() => { setSelectedOrder(null); setIsNewOrderModalOpen(false); setPresetOrderData(null); }}
           onSave={handleSaveOrder}
           registeredUsers={registeredUsers}
+          allOrders={orders}
         />
       )}
 
