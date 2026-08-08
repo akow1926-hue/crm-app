@@ -164,10 +164,10 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
           {[
             { id: 'all', label: 'Все Заказы', count: orders.length },
             { id: 'urgent', label: '🔥 Срочные', count: orders.filter(o => o.urgent).length },
-            { id: 'new', label: '📥 Ожидает забора', count: orders.filter(o => o.status === 'new' || o.status === 'pickup').length },
-            { id: 'cleaning', label: '🧼 В цеху', count: orders.filter(o => o.status === 'cleaning').length },
-            { id: 'ready', label: '📦 Готов к доставке', count: orders.filter(o => o.status === 'ready' || o.status === 'delivery').length },
-            { id: 'done', label: '✅ Выполнен', count: orders.filter(o => o.status === 'done').length }
+            { id: 'new', label: '📥 1. Ожидает забора', count: orders.filter(o => o.status === 'new' || o.status === 'pickup').length },
+            { id: 'cleaning', label: '🧼 2. Забран / В цеху', count: orders.filter(o => o.status === 'cleaning').length },
+            { id: 'ready', label: '📦 3. Готов / На доставке', count: orders.filter(o => o.status === 'ready' || o.status === 'delivery').length },
+            { id: 'done', label: '✅ 4. Выполнен', count: orders.filter(o => o.status === 'done').length }
           ].map(st => (
             <button
               key={st.id}

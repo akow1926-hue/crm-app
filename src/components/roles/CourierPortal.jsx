@@ -902,12 +902,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                         <ArrowLeftRight size={13} /> ⇄ Передать
                       </button>
 
-                      <span className={`badge badge-${order.status}`} style={{ fontSize: '11px', fontWeight: '700' }}>
-                        {order.status === 'new' && '⏳ Ожидает забора'}
-                        {order.status === 'pickup' && '🚚 В пути на забор'}
-                        {order.status === 'cleaning' && '🧼 В цеху (Стирка)'}
-                        {order.status === 'ready' && '✨ Готов к доставке'}
-                        {order.status === 'delivery' && '📦 На доставке'}
+                      <span className={`badge badge-${order.status}`} style={{ fontSize: '11.5px', fontWeight: '800', padding: '4px 10px' }}>
+                        {(order.status === 'new' || order.status === 'pickup') && '📥 Ожидает забора'}
+                        {order.status === 'cleaning' && '🧼 Забран (В цеху)'}
+                        {(order.status === 'ready' || order.status === 'delivery') && '📦 Готов / На доставке'}
                         {order.status === 'done' && '✅ Выполнен'}
                       </span>
                     </div>

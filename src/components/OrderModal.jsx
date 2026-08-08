@@ -315,12 +315,10 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="select-field"
               >
-                <option value="new">⏳ Ожидает забора</option>
-                <option value="pickup">🚚 Забор курьером</option>
-                <option value="cleaning">🧼 В цеху (Стирка)</option>
-                <option value="ready">✨ Готов к отправке</option>
-                <option value="delivery">📦 На доставке</option>
-                <option value="done">✅ Выполнен</option>
+                <option value="new">📥 1. Ожидает забора</option>
+                <option value="cleaning">🧼 2. Забран / В цеху</option>
+                <option value="delivery">📦 3. Готов / На доставке</option>
+                <option value="done">✅ 4. Выполнен</option>
               </select>
             </div>
 

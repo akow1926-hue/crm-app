@@ -21,15 +21,13 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
   const [dragOverColId, setDragOverColId] = useState(null);
 
   const columns = [
-    { id: 'new', title: 'Ожидает забора', color: '#60a5fa', icon: Package, badgeClass: 'badge-new' },
-    { id: 'pickup', title: 'На забор (Курьер)', color: '#a78bfa', icon: Truck, badgeClass: 'badge-pickup' },
-    { id: 'cleaning', title: 'В цеху (Стирка)', color: '#fbbf24', icon: Shirt, badgeClass: 'badge-cleaning' },
-    { id: 'ready', title: 'Готов к отправке', color: '#22d3ee', icon: CheckCircle2, badgeClass: 'badge-ready' },
-    { id: 'delivery', title: 'На доставке', color: '#f472b6', icon: Truck, badgeClass: 'badge-delivery' },
-    { id: 'done', title: 'Выполнен', color: '#34d399', icon: CheckCircle2, badgeClass: 'badge-done' }
+    { id: 'new', title: '📥 1. Ожидает забора', color: '#38bdf8', icon: Package, badgeClass: 'badge-new' },
+    { id: 'cleaning', title: '🧼 2. Забран / В цеху', color: '#facc15', icon: Shirt, badgeClass: 'badge-cleaning' },
+    { id: 'delivery', title: '📦 3. Готов / На доставке', color: '#a855f7', icon: Truck, badgeClass: 'badge-delivery' },
+    { id: 'done', title: '✅ 4. Выполнен', color: '#10b981', icon: CheckCircle2, badgeClass: 'badge-done' }
   ];
 
-  const statusFlow = ['new', 'pickup', 'cleaning', 'ready', 'delivery', 'done'];
+  const statusFlow = ['new', 'cleaning', 'delivery', 'done'];
 
   const moveStatus = (orderId, direction) => {
     setOrders(prevOrders => prevOrders.map(order => {
@@ -115,14 +113,20 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
       {/* Kanban Board Columns Horizontal Scroll */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(6, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(4, minmax(280px, 1fr))',
         gap: '16px',
         overflowX: 'auto',
         paddingBottom: '16px',
         minHeight: '680px'
       }}>
         {columns.map((col) => {
-          const colOrders = orders.filter(o => o.status === col.id);
+          const colOrders = orders.filter(o => {
+            if (col.id === 'new') return o.status === 'new' || o.status === 'pickup';
+            if (col.id === 'cleaning') return o.status === 'cleaning';
+            if (col.id === 'delivery') return o.status === 'ready' || o.status === 'delivery';
+            if (col.id === 'done') return o.status === 'done';
+            return o.status === col.id;
+          });
           const ColumnIcon = col.icon;
           const colTotal = colOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
           const isTargetOver = dragOverColId === col.id;

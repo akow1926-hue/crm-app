@@ -13,7 +13,7 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
     setOrders(orders.map(o => {
       if (o.id === orderId) {
         if (o.status === 'pickup') return { ...o, status: 'cleaning' };
-        if (o.status === 'cleaning') return { ...o, status: 'ready' };
+        if (o.status === 'cleaning') return { ...o, status: 'delivery' };
       }
       return o;
     }));
