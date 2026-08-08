@@ -1,6 +1,6 @@
 import { getStore, updateOrders, addOrUpdateOrder } from './store.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,7 +9,7 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  const store = getStore();
+  const store = await getStore();
 
   if (req.method === 'GET') {
     return res.status(200).json({ success: true, orders: store.orders });
@@ -18,10 +18,10 @@ export default function handler(req, res) {
   if (req.method === 'POST') {
     const body = req.body || {};
     if (Array.isArray(body.orders)) {
-      const updated = updateOrders(body.orders);
+      const updated = await updateOrders(body.orders);
       return res.status(200).json({ success: true, orders: updated });
     } else if (body.id) {
-      const updated = addOrUpdateOrder(body);
+      const updated = await addOrUpdateOrder(body);
       return res.status(200).json({ success: true, orders: updated });
     }
     return res.status(400).json({ success: false, error: 'Invalid order payload' });

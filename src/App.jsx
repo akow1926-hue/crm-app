@@ -41,6 +41,18 @@ import {
   notifyAdminPayment 
 } from './services/notificationService';
 import { broadcastDataChange, subscribeToRealtimeSync, fetchInitialServerState } from './services/syncEngine';
+import { 
+  getSupabaseOrders, 
+  saveSupabaseOrder, 
+  deleteSupabaseOrder, 
+  getSupabaseUsers, 
+  saveSupabaseUser, 
+  deleteSupabaseUser,
+  getSupabaseClients, 
+  saveSupabaseClient, 
+  deleteSupabaseClient,
+  subscribeToSupabaseRealtime 
+} from './services/supabaseService';
 
 export default function App() {
   // Auth Session State
@@ -53,150 +65,173 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Persistent Orders & Clients (Clean Production State)
-  const [orders, setOrders] = useState(() => {
+  // UI Modals & Drawers State
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [presetOrderData, setPresetOrderData] = useState(null);
+
+  // Production & Demo State (Persistent in localStorage & Supabase)
+  const [orders, setOrdersState] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_orders');
     return saved ? JSON.parse(saved) : initialOrders;
   });
 
-  const [clients, setClients] = useState(() => {
+  const [clients, setClientsState] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_clients');
     return saved ? JSON.parse(saved) : initialClients;
   });
 
-  // Registered System Accounts
-  const [registeredUsers, setRegisteredUsers] = useState(() => {
+  const [logs, setLogs] = useState(initialLogs);
+
+  // Registered System Accounts (Only Admin by default)
+  const [registeredUsers, setRegisteredUsersState] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_registered_users');
     return saved ? JSON.parse(saved) : [
       { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
     ];
   });
 
-  // Helper to safely merge user lists by username
-  const mergeUserLists = (listA = [], listB = []) => {
-    const userMap = new Map();
-    listA.forEach(u => u && u.username && userMap.set(String(u.username).toLowerCase(), u));
-    listB.forEach(u => u && u.username && userMap.set(String(u.username).toLowerCase(), u));
-    return Array.from(userMap.values());
+  // Wrapper for setOrders that updates local state, localStorage, and syncs to Supabase DB & Google Sheets
+  const setOrders = (updater) => {
+    setOrdersState(prevOrders => {
+      const nextOrders = typeof updater === 'function' ? updater(prevOrders) : updater;
+      try {
+        localStorage.setItem('cosmo_crm_orders', JSON.stringify(nextOrders));
+      } catch (e) {}
+
+      // 1. Identify deleted orders and remove them from DB
+      prevOrders.forEach(prevOrder => {
+        const stillExists = nextOrders.some(n => String(n.id) === String(prevOrder.id));
+        if (!stillExists) {
+          deleteSupabaseOrder(prevOrder.id);
+          deleteOrderFromGoogleSheets(prevOrder.id);
+        }
+      });
+
+      // 2. Identify modified or new orders and persist to DB & Google Sheets
+      nextOrders.forEach(nextOrder => {
+        const prevOrder = prevOrders.find(o => String(o.id) === String(nextOrder.id));
+        if (!prevOrder || JSON.stringify(prevOrder) !== JSON.stringify(nextOrder)) {
+          saveSupabaseOrder(nextOrder);
+          syncOrderToGoogleSheets(nextOrder);
+        }
+      });
+      return nextOrders;
+    });
   };
 
-  // Initial Sync from Central Google Sheets & Server DB on Startup (Cross-device, PC, Phone, Tablet)
+  const setClients = (updater) => {
+    setClientsState(prevClients => {
+      const nextClients = typeof updater === 'function' ? updater(prevClients) : updater;
+      try {
+        localStorage.setItem('cosmo_crm_clients', JSON.stringify(nextClients));
+      } catch (e) {}
+
+      // 1. Identify deleted clients
+      prevClients.forEach(prevClient => {
+        const stillExists = nextClients.some(c => String(c.id) === String(prevClient.id));
+        if (!stillExists) {
+          deleteSupabaseClient(prevClient.id);
+        }
+      });
+
+      // 2. Identify modified or new clients
+      nextClients.forEach(nextClient => {
+        const prevClient = prevClients.find(c => String(c.id) === String(nextClient.id));
+        if (!prevClient || JSON.stringify(prevClient) !== JSON.stringify(nextClient)) {
+          saveSupabaseClient(nextClient);
+          syncClientToGoogleSheets(nextClient);
+        }
+      });
+      return nextClients;
+    });
+  };
+
+  const setRegisteredUsers = (updater) => {
+    setRegisteredUsersState(prevUsers => {
+      const nextUsers = typeof updater === 'function' ? updater(prevUsers) : updater;
+      try {
+        localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(nextUsers));
+      } catch (e) {}
+
+      // 1. Identify deleted users
+      prevUsers.forEach(prevUser => {
+        const stillExists = nextUsers.some(u => String(u.id) === String(prevUser.id) || u.username === prevUser.username);
+        if (!stillExists) {
+          deleteSupabaseUser(prevUser.id);
+        }
+      });
+
+      // 2. Identify modified or new users
+      nextUsers.forEach(newUser => {
+        const prevUser = prevUsers.find(u => String(u.id) === String(newUser.id) || u.username === newUser.username);
+        if (!prevUser || JSON.stringify(prevUser) !== JSON.stringify(newUser)) {
+          saveSupabaseUser(newUser);
+          syncUserToGoogleSheets(newUser);
+        }
+      });
+      return nextUsers;
+    });
+  };
+
+  // Initial Data Fetch from Supabase
+  const loadSupabaseData = async () => {
+    const [dbOrders, dbUsers, dbClients] = await Promise.all([
+      getSupabaseOrders(),
+      getSupabaseUsers(),
+      getSupabaseClients()
+    ]);
+
+    if (Array.isArray(dbOrders)) {
+      setOrdersState(dbOrders);
+      localStorage.setItem('cosmo_crm_orders', JSON.stringify(dbOrders));
+    }
+    if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+      setRegisteredUsersState(dbUsers);
+      localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(dbUsers));
+    }
+    if (Array.isArray(dbClients)) {
+      setClientsState(dbClients);
+      localStorage.setItem('cosmo_crm_clients', JSON.stringify(dbClients));
+    }
+  };
+
   useEffect(() => {
-    // 1. Fetch directly from Google Sheets Online Database if configured
+    // 1. Load primary state from Supabase Postgres DB
+    loadSupabaseData();
+
+    // 2. Fallback sync from Google Sheets / API
     fetchFromGoogleSheets().then(gsData => {
       if (gsData) {
         if (Array.isArray(gsData.orders) && gsData.orders.length > 0) {
-          setOrders(gsData.orders);
+          setOrdersState(gsData.orders);
           localStorage.setItem('cosmo_crm_orders', JSON.stringify(gsData.orders));
         }
         if (Array.isArray(gsData.users) && gsData.users.length > 0) {
-          setRegisteredUsers(gsData.users);
+          setRegisteredUsersState(gsData.users);
           localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(gsData.users));
         }
         if (Array.isArray(gsData.clients) && gsData.clients.length > 0) {
-          setClients(gsData.clients);
+          setClientsState(gsData.clients);
           localStorage.setItem('cosmo_crm_clients', JSON.stringify(gsData.clients));
         }
       }
     });
 
-    // 2. Fallback server state sync
-    fetchInitialServerState().then(serverDb => {
-      if (serverDb) {
-        if (Array.isArray(serverDb.users) && serverDb.users.length > 0) {
-          setRegisteredUsers(serverDb.users);
-          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(serverDb.users));
-        }
-        if (Array.isArray(serverDb.orders)) {
-          setOrders(serverDb.orders);
-          localStorage.setItem('cosmo_crm_orders', JSON.stringify(serverDb.orders));
-        }
-        if (Array.isArray(serverDb.clients)) {
-          setClients(serverDb.clients);
-          localStorage.setItem('cosmo_crm_clients', JSON.stringify(serverDb.clients));
-        }
-      }
+    // 3. Subscribe to Supabase Realtime Postgres Changes
+    const unsubscribeSupabase = subscribeToSupabaseRealtime((payload) => {
+      loadSupabaseData();
     });
+
+    return () => {
+      if (unsubscribeSupabase) unsubscribeSupabase();
+    };
   }, []);
-
-  // Real-Time Cross-Device Sync Subscription (SSE + BroadcastChannel)
-  useEffect(() => {
-    const unsubscribe = subscribeToRealtimeSync((event) => {
-      if (event.type === 'registered_users' || event.type === 'users') {
-        if (Array.isArray(event.payload)) {
-          setRegisteredUsers(event.payload);
-          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(event.payload));
-        }
-      } else if (event.type === 'orders') {
-        if (Array.isArray(event.payload)) {
-          setOrders(event.payload);
-          localStorage.setItem('cosmo_crm_orders', JSON.stringify(event.payload));
-        }
-      } else if (event.type === 'clients') {
-        if (Array.isArray(event.payload)) {
-          setClients(event.payload);
-          localStorage.setItem('cosmo_crm_clients', JSON.stringify(event.payload));
-        }
-      } else if (event.type === 'courier_location_updated') {
-        if (event.payload?.courierName && event.payload?.location) {
-          try {
-            const saved = localStorage.getItem('cosmo_crm_courier_locations');
-            const map = saved ? JSON.parse(saved) : {};
-            map[event.payload.courierName] = event.payload.location;
-            localStorage.setItem('cosmo_crm_courier_locations', JSON.stringify(map));
-            window.dispatchEvent(new CustomEvent('courier_location_updated', { detail: map }));
-          } catch (e) {}
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const [logs, setLogs] = useState(initialLogs);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [presetOrderData, setPresetOrderData] = useState(null);
-
-  // Handle Android Back Button
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      const backHandler = CapApp.addListener('backButton', ({ canGoBack }) => {
-        if (!canGoBack) {
-          CapApp.exitApp();
-        } else {
-          window.history.back();
-        }
-      });
-      return () => {
-        backHandler.then(h => h.remove());
-      };
-    }
-  }, []);
-
-  // Sync state & Broadcast real-time changes
-  useEffect(() => {
-    localStorage.setItem('cosmo_crm_orders', JSON.stringify(orders));
-    broadcastDataChange('orders', orders);
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('cosmo_crm_clients', JSON.stringify(clients));
-    broadcastDataChange('clients', clients);
-  }, [clients]);
-
-  useEffect(() => {
-    localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(registeredUsers));
-    broadcastDataChange('registered_users', registeredUsers);
-  }, [registeredUsers]);
 
   const handleRegisterUser = (newUser) => {
-    setRegisteredUsers(prev => {
-      const updated = [newUser, ...prev];
-      broadcastDataChange('registered_users', updated);
-      return updated;
-    });
-    // Direct sync to Google Sheets
+    setRegisteredUsers(prev => [newUser, ...prev]);
+    saveSupabaseUser(newUser);
     syncUserToGoogleSheets(newUser);
     setLogs(prev => [{ id: Date.now(), text: `Поступила новая заявка на регистрацию: ${newUser.name} (${newUser.username})`, time: 'Только что', type: 'system' }, ...prev]);
   };
@@ -227,9 +262,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Вы уверены, что хотите выйти из системы?')) {
-      setCurrentUser(null);
-    }
+    localStorage.removeItem('cosmo_crm_user');
+    setCurrentUser(null);
   };
 
   // Request Push Notification permissions on mount
@@ -250,6 +284,9 @@ export default function App() {
       // Push notification to Courier
       notifyCourierNewOrder(savedOrder);
     }
+
+    // Direct save to Supabase Postgres DB
+    saveSupabaseOrder(savedOrder);
 
     // Status change push notifications
     if (prevStatus !== savedOrder.status) {

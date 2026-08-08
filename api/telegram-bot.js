@@ -120,7 +120,7 @@ async function handleMessage(msg, token) {
     const lat = msg.location.latitude;
     const lng = msg.location.longitude;
     const courName = msg.from.first_name || 'Курьер Telegram';
-    updateCourierLocation(courName, { lat, lng, speed: 0, status: 'Передана GPS геолокация' });
+    await updateCourierLocation(courName, { lat, lng, speed: 0, status: 'Передана GPS геолокация' });
     await sendTgMessage(token, chatId, `✅ **GPS Геолокация успешно передана в CRM!**\nКоординаты: \`${lat.toFixed(5)}, ${lng.toFixed(5)}\`\nВаше местоположение обновилось на карте администратора.`);
     return;
   }
@@ -136,7 +136,7 @@ async function handleMessage(msg, token) {
     return;
   }
 
-  const store = getStore();
+  const store = await getStore();
   const orders = store.orders || [];
 
   // 3. Pickup Orders (📥 Забор ковров)
@@ -228,12 +228,12 @@ async function searchAndSendOrders(query, orders, token, chatId) {
 async function handleCallbackQuery(cb, token) {
   const data = cb.data || '';
   const chatId = cb.message.chat.id;
-  const store = getStore();
+  const store = await getStore();
 
   if (data.startsWith('cour_claim_')) {
     const orderId = data.replace('cour_claim_', '');
     const courName = cb.from.first_name || 'Курьер Telegram';
-    addOrUpdateOrder({ id: orderId, status: 'pickup', assignedCourier: courName });
+    await addOrUpdateOrder({ id: orderId, status: 'pickup', assignedCourier: courName });
     await answerCallbackQuery(token, cb.id, `🚗 Вы взяли заказ #${orderId} на забор!`);
     await sendTgMessage(token, chatId, `✅ **Вы взяли заказ №${orderId} на забор!**\nСтатус заказа обновлен в CRM на "Забор курьером".`);
     return;
@@ -241,7 +241,7 @@ async function handleCallbackQuery(cb, token) {
 
   if (data.startsWith('cour_ready_')) {
     const orderId = data.replace('cour_ready_', '');
-    addOrUpdateOrder({ id: orderId, status: 'delivery' });
+    await addOrUpdateOrder({ id: orderId, status: 'delivery' });
     await answerCallbackQuery(token, cb.id, `📦 Заказ #${orderId} переведен на доставку!`);
     await sendTgMessage(token, chatId, `📦 **Заказ №${orderId} готов к выгрузке клиенту!**`);
     return;
@@ -255,7 +255,7 @@ async function handleCallbackQuery(cb, token) {
     const existing = (store.orders || []).find(o => String(o.id) === String(orderId));
     const amount = existing?.totalAmount || 0;
 
-    addOrUpdateOrder({
+    await addOrUpdateOrder({
       id: orderId,
       status: 'done',
       paymentStatus: 'paid',

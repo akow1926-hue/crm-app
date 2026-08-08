@@ -14,6 +14,8 @@ import {
   Plus
 } from 'lucide-react';
 
+import { deleteSupabaseOrder } from '../services/supabaseService';
+
 export default function OrdersTableView({ orders, setOrders, setSelectedOrder, onOpenNewOrder, searchQuery }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -52,6 +54,7 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
   const deleteOrder = (id) => {
     if (window.confirm(`Вы действительно хотите удалить заказ #${id}?`)) {
       setOrders(orders.filter(o => o.id !== id));
+      deleteSupabaseOrder(id);
     }
   };
 

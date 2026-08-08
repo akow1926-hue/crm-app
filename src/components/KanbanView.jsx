@@ -14,6 +14,9 @@ import {
   GripVertical
 } from 'lucide-react';
 
+import { saveSupabaseOrder } from '../services/supabaseService';
+import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
+
 export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpenNewOrder }) {
   const [draggedOrderId, setDraggedOrderId] = useState(null);
   const [dragOverColId, setDragOverColId] = useState(null);
@@ -35,11 +38,15 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
         const currentIndex = statusFlow.indexOf(order.status);
         const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
         if (nextIndex >= 0 && nextIndex < statusFlow.length) {
-          return { 
+          const nextStatus = statusFlow[nextIndex];
+          const updatedOrder = { 
             ...order, 
-            status: statusFlow[nextIndex],
-            paymentStatus: statusFlow[nextIndex] === 'done' ? 'paid' : order.paymentStatus 
+            status: nextStatus,
+            paymentStatus: nextStatus === 'done' ? 'paid' : order.paymentStatus 
           };
+          saveSupabaseOrder(updatedOrder);
+          syncOrderToGoogleSheets(updatedOrder);
+          return updatedOrder;
         }
       }
       return order;
@@ -49,11 +56,14 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
   const setExactStatus = (orderId, targetStatus) => {
     setOrders(prevOrders => prevOrders.map(order => {
       if (order.id === orderId) {
-        return { 
+        const updatedOrder = { 
           ...order, 
           status: targetStatus,
           paymentStatus: targetStatus === 'done' ? 'paid' : order.paymentStatus 
         };
+        saveSupabaseOrder(updatedOrder);
+        syncOrderToGoogleSheets(updatedOrder);
+        return updatedOrder;
       }
       return order;
     }));

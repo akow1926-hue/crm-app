@@ -18,7 +18,7 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('+998 ');
-  const [role, setRole] = useState('dispatcher');
+  const [role, setRole] = useState('admin');
   const [errorMsg, setErrorMsg] = useState('');
   const [successPendingMsg, setSuccessPendingMsg] = useState(null);
 
@@ -48,7 +48,7 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
         return;
       }
 
-      // Register user with PENDING status
+      // Register user with ACTIVE status for instant access
       const newUser = {
         id: `USR-${Date.now()}`,
         username: cleanUsername,
@@ -56,17 +56,18 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
         name: fullName,
         phone: phone,
         role: role,
-        status: 'pending',
+        status: 'active',
         createdDate: new Date().toLocaleString('ru-RU')
       };
 
       onRegisterUser(newUser);
 
-      // Show success pending notification
-      setSuccessPendingMsg({
-        username: cleanUsername,
-        name: fullName,
-        role: role === 'admin' ? 'Администратор' : role === 'dispatcher' ? 'Диспетчер' : role === 'courier' ? 'Курьер' : 'Оператор стирки'
+      // Instantly log in the registered user into their workspace
+      onLogin({
+        username: newUser.username,
+        name: newUser.name,
+        role: newUser.role,
+        phone: newUser.phone
       });
 
       // Clear fields
@@ -323,10 +324,10 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
                     onChange={(e) => setRole(e.target.value)}
                     className="select-field"
                   >
+                    <option value="admin">👑 Администратор (Главный кабинет CRM)</option>
                     <option value="dispatcher">📞 Диспетчер (Прием заказов)</option>
                     <option value="courier">🚚 Курьер (Забор и Доставка)</option>
                     <option value="washer">🧺 Оператор стирки (Цех)</option>
-                    <option value="admin">👑 Администратор</option>
                   </select>
                 </div>
               </>

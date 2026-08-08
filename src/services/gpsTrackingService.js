@@ -1,5 +1,6 @@
 import { broadcastDataChange } from './syncEngine';
 import { syncGpsToGoogleSheets } from './googleSheetsService';
+import { updateSupabaseCourierLocation } from './supabaseService';
 
 const STORAGE_KEY = 'cosmo_crm_courier_locations';
 const HISTORY_KEY = 'cosmo_crm_courier_routes';
@@ -62,6 +63,9 @@ export function updateCourierLocation(courierName, positionData) {
   } catch (err) {
     console.error('Error updating courier route history:', err);
   }
+
+  // Push live GPS coordinates directly to Supabase DB for Realtime map updates on Admin PC
+  updateSupabaseCourierLocation(courierName, positionData).catch(() => {});
 
   // Broadcast event across tabs/windows/devices
   broadcastDataChange('courier_location_updated', { courierName, location: updatedLocation });

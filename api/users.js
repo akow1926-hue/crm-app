@@ -1,6 +1,6 @@
 import { getStore, updateUsers, addOrUpdateUser } from './store.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,7 +9,7 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  const store = getStore();
+  const store = await getStore();
 
   if (req.method === 'GET') {
     return res.status(200).json({ success: true, users: store.users });
@@ -18,10 +18,10 @@ export default function handler(req, res) {
   if (req.method === 'POST') {
     const body = req.body || {};
     if (Array.isArray(body.users)) {
-      const updated = updateUsers(body.users);
+      const updated = await updateUsers(body.users);
       return res.status(200).json({ success: true, users: updated });
     } else if (body.username) {
-      const updated = addOrUpdateUser(body);
+      const updated = await addOrUpdateUser(body);
       return res.status(200).json({ success: true, users: updated });
     }
     return res.status(400).json({ success: false, error: 'Invalid user payload' });

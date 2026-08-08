@@ -24,4 +24,5 @@ dist-ssr
 *.sw?
 .cosmo_db.json
 .artifacts/
+.env
 

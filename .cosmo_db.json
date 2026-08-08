@@ -2,16 +2,6 @@
   "orders": [],
   "users": [
     {
-      "id": "USR-5234",
-      "username": "akobir",
-      "name": "ффыва",
-      "pass": "akobir",
-      "role": "courier",
-      "phone": "+998 200022099",
-      "status": "active",
-      "createdDate": "08.08.2026, 08:06:35"
-    },
-    {
       "id": "USR-1",
       "username": "admin",
       "pass": "admin123",
@@ -19,9 +9,32 @@
       "role": "admin",
       "phone": "+998 90 123 45 67",
       "status": "active",
-      "createdDate": "2026-08-01 10:00"
+      "created_date": "2026-08-08T15:36:30.043256+00:00"
+    },
+    {
+      "id": "USR-3547",
+      "username": "akobir",
+      "pass": "akobir",
+      "name": "Акобир",
+      "role": "courier",
+      "phone": "+998 200022099",
+      "status": "active",
+      "created_date": "2026-08-08T16:24:54.135064+00:00"
     }
   ],
   "clients": [],
-  "courierLocations": {}
+  "courierLocations": {
+    "Алишер Рахимов": {
+      "name": "Алишер Рахимов",
+      "lat": 39.6588,
+      "lng": 66.9615,
+      "speed": 0,
+      "heading": 0,
+      "accuracy": 200000,
+      "battery": 95,
+      "status": "В движении (GPS передаётся)",
+      "lastUpdate": "2026-08-08T15:47:24.694Z",
+      "isOnline": true
+    }
+  }
 }

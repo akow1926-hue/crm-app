@@ -18,6 +18,7 @@ import {
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { getActiveCouriers } from '../services/staffHelper';
 import { subscribeToRealtimeSync } from '../services/syncEngine';
+import { getSupabaseCourierLocations } from '../services/supabaseService';
 
 export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -32,9 +33,11 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   // Dynamic Live GPS Couriers Positions
   const [couriers, setCouriers] = useState([]);
 
-  // Sync real-time GPS coordinates from continuous GPS tracking service
-  const syncLiveGpsPositions = () => {
-    const liveMap = getCourierLocations();
+  // Sync real-time GPS coordinates from continuous GPS tracking service & Supabase DB
+  const syncLiveGpsPositions = async () => {
+    const localMap = getCourierLocations();
+    const dbMap = await getSupabaseCourierLocations();
+    const liveMap = { ...localMap, ...dbMap };
     const systemCouriers = getActiveCouriers(registeredUsers);
 
     // Dynamic set of all courier names (registered + live)
