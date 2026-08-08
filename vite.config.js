@@ -116,11 +116,8 @@ function crmRealtimeSyncPlugin() {
             if (type === 'orders' && Array.isArray(payload)) {
               db.orders = payload;
             } else if ((type === 'registered_users' || type === 'users') && Array.isArray(payload)) {
-              // Safe merge by username to never lose added employees
-              const userMap = new Map();
-              (db.users || []).forEach(u => userMap.set(String(u.username).toLowerCase(), u));
-              payload.forEach(u => userMap.set(String(u.username).toLowerCase(), u));
-              db.users = Array.from(userMap.values());
+              // Direct replacement - allows deleting users without resurrecting them
+              db.users = payload;
             } else if (type === 'clients' && Array.isArray(payload)) {
               db.clients = payload;
             } else if (type === 'courier_locations') {
@@ -141,11 +138,11 @@ function crmRealtimeSyncPlugin() {
         // 4. Courier GPS Update: POST /api/locations
         if (url === '/api/locations' && req.method === 'POST') {
           readJson((data) => {
-            const { courierName, location } = data;
+            const { courierName, location, senderId } = data;
             if (courierName && location) {
               db.courierLocations[courierName] = location;
               saveDb();
-              broadcastSSE('courier_location_updated', { courierName, location });
+              broadcastSSE('courier_location_updated', { courierName, location }, senderId);
             }
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, courierLocations: db.courierLocations }));
@@ -162,6 +159,7 @@ function crmRealtimeSyncPlugin() {
           }
           if (req.method === 'POST') {
             readJson((data) => {
+              const { senderId } = data;
               if (Array.isArray(data.orders)) {
                 db.orders = data.orders;
               } else if (data.id) {
@@ -170,7 +168,7 @@ function crmRealtimeSyncPlugin() {
                 else db.orders.unshift(data);
               }
               saveDb();
-              broadcastSSE('orders', db.orders);
+              broadcastSSE('orders', db.orders, senderId);
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ success: true, orders: db.orders }));
             });
@@ -187,6 +185,7 @@ function crmRealtimeSyncPlugin() {
           }
           if (req.method === 'POST') {
             readJson((data) => {
+              const { senderId } = data;
               if (Array.isArray(data.users)) {
                 db.users = data.users;
               } else if (data.username) {
@@ -195,7 +194,7 @@ function crmRealtimeSyncPlugin() {
                 else db.users.unshift(data);
               }
               saveDb();
-              broadcastSSE('registered_users', db.users);
+              broadcastSSE('registered_users', db.users, senderId);
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ success: true, users: db.users }));
             });

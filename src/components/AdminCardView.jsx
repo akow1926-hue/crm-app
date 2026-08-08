@@ -109,11 +109,6 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
     setTimeout(() => setCopiedCode(false), 3000);
   };
 
-  // Staff Management State
-  const [staffList, setStaffList] = useState([
-    { id: 'USR-01', username: 'admin', name: 'Администратор (Superuser)', role: 'admin', phone: '+998 90 123 45 67', status: 'active', failedLogins: 0, telegramId: '' }
-  ]);
-
   // Pricing State
   const [pricingList, setPricingList] = useState(serviceCatalog);
 
@@ -150,12 +145,12 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
 
   // User management actions
   const toggleUserStatus = (userId) => {
-    setStaffList(staffList.map(u => u.id === userId ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u));
+    setRegisteredUsers(prev => prev.map(u => u.id === userId ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u));
     setAuditLogs([{ id: Date.now(), time: new Date().toLocaleTimeString(), user: 'admin', action: `Изменение статуса пользователя ${userId}`, ip: '192.168.0.106' }, ...auditLogs]);
   };
 
   const resetBruteForce = (userId) => {
-    setStaffList(staffList.map(u => u.id === userId ? { ...u, failedLogins: 0 } : u));
+    setRegisteredUsers(prev => prev.map(u => u.id === userId ? { ...u, failedLogins: 0 } : u));
     alert(`Защита Brute-Force для ${userId} сброшена!`);
   };
 
@@ -168,7 +163,7 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
   };
 
   const triggerBackup = (type) => {
-    const data = type === 'orders' ? orders : type === 'users' ? staffList : { orders, clients, staffList };
+    const data = type === 'orders' ? orders : type === 'users' ? registeredUsers : { orders, clients, registeredUsers };
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -731,12 +726,7 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                           <button 
                             onClick={() => {
                               if (window.confirm(`Удалить учетную запись @${user.username}?`)) {
-                                setRegisteredUsers(prev => {
-                                  const updated = prev.filter(u => u.id !== user.id);
-                                  localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(updated));
-                                  broadcastDataChange('registered_users', updated);
-                                  return updated;
-                                });
+                                setRegisteredUsers(prev => prev.filter(u => u.id !== user.id && u.username !== user.username));
                               }
                             }} 
                             className="btn-icon" 

@@ -25,7 +25,14 @@ import WasherPortal from './components/roles/WasherPortal';
 
 import { initialOrders, initialClients, activityLogs as initialLogs } from './data/initialData';
 import { triggerAutoSMSForOrder } from './services/smsService';
-import { syncOrderToGoogleSheets } from './services/googleSheetsService';
+import { 
+  syncOrderToGoogleSheets, 
+  deleteOrderFromGoogleSheets, 
+  syncUserToGoogleSheets, 
+  syncClientToGoogleSheets,
+  fetchFromGoogleSheets,
+  getGoogleSheetConfig
+} from './services/googleSheetsService';
 import { 
   requestNotificationPermission, 
   notifyCourierNewOrder, 
@@ -61,8 +68,7 @@ export default function App() {
   const [registeredUsers, setRegisteredUsers] = useState(() => {
     const saved = localStorage.getItem('cosmo_crm_registered_users');
     return saved ? JSON.parse(saved) : [
-      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' },
-      { id: 'USR-2', username: 'courier', pass: 'courier123', name: 'Алишер Рахимов', role: 'courier', phone: '+998 90 777 88 99', status: 'active', createdDate: '2026-08-01 10:00' }
+      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
     ];
   });
 
@@ -74,16 +80,32 @@ export default function App() {
     return Array.from(userMap.values());
   };
 
-  // Initial Sync from Central Server DB on Startup (Works across PC, Phone, Tablet)
+  // Initial Sync from Central Google Sheets & Server DB on Startup (Cross-device, PC, Phone, Tablet)
   useEffect(() => {
+    // 1. Fetch directly from Google Sheets Online Database if configured
+    fetchFromGoogleSheets().then(gsData => {
+      if (gsData) {
+        if (Array.isArray(gsData.orders) && gsData.orders.length > 0) {
+          setOrders(gsData.orders);
+          localStorage.setItem('cosmo_crm_orders', JSON.stringify(gsData.orders));
+        }
+        if (Array.isArray(gsData.users) && gsData.users.length > 0) {
+          setRegisteredUsers(gsData.users);
+          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(gsData.users));
+        }
+        if (Array.isArray(gsData.clients) && gsData.clients.length > 0) {
+          setClients(gsData.clients);
+          localStorage.setItem('cosmo_crm_clients', JSON.stringify(gsData.clients));
+        }
+      }
+    });
+
+    // 2. Fallback server state sync
     fetchInitialServerState().then(serverDb => {
       if (serverDb) {
         if (Array.isArray(serverDb.users) && serverDb.users.length > 0) {
-          setRegisteredUsers(prev => {
-            const merged = mergeUserLists(prev, serverDb.users);
-            localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(merged));
-            return merged;
-          });
+          setRegisteredUsers(serverDb.users);
+          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(serverDb.users));
         }
         if (Array.isArray(serverDb.orders)) {
           setOrders(serverDb.orders);
@@ -92,10 +114,6 @@ export default function App() {
         if (Array.isArray(serverDb.clients)) {
           setClients(serverDb.clients);
           localStorage.setItem('cosmo_crm_clients', JSON.stringify(serverDb.clients));
-        }
-        if (serverDb.courierLocations && typeof serverDb.courierLocations === 'object') {
-          localStorage.setItem('cosmo_crm_courier_locations', JSON.stringify(serverDb.courierLocations));
-          window.dispatchEvent(new CustomEvent('courier_location_updated', { detail: serverDb.courierLocations }));
         }
       }
     });
@@ -106,11 +124,8 @@ export default function App() {
     const unsubscribe = subscribeToRealtimeSync((event) => {
       if (event.type === 'registered_users' || event.type === 'users') {
         if (Array.isArray(event.payload)) {
-          setRegisteredUsers(prev => {
-            const merged = mergeUserLists(prev, event.payload);
-            localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(merged));
-            return merged;
-          });
+          setRegisteredUsers(event.payload);
+          localStorage.setItem('cosmo_crm_registered_users', JSON.stringify(event.payload));
         }
       } else if (event.type === 'orders') {
         if (Array.isArray(event.payload)) {
@@ -181,6 +196,8 @@ export default function App() {
       broadcastDataChange('registered_users', updated);
       return updated;
     });
+    // Direct sync to Google Sheets
+    syncUserToGoogleSheets(newUser);
     setLogs(prev => [{ id: Date.now(), text: `Поступила новая заявка на регистрацию: ${newUser.name} (${newUser.username})`, time: 'Только что', type: 'system' }, ...prev]);
   };
 

@@ -188,7 +188,39 @@ export const syncUserToGoogleSheets = async (user) => {
 };
 
 /**
- * Fetch full database directly from Google Sheets online (Orders, Users, Finances, Logs)
+ * 6. Sheet 6: Clients Sync
+ */
+export const syncClientToGoogleSheets = async (client) => {
+  const payload = {
+    targetSheet: 'Клиенты',
+    id: client.id || `CLI-${Date.now()}`,
+    name: client.name || '',
+    phone: client.phone || '',
+    address: client.address || '',
+    totalOrders: client.totalOrders || 0,
+    totalSpent: client.totalSpent || 0,
+    discount: client.discount || 0,
+    district: client.district || 'Самарканд',
+    lastOrder: client.lastOrder || new Date().toLocaleDateString('ru-RU'),
+    notes: client.notes || ''
+  };
+  return postToGSheetWebhook(payload);
+};
+
+/**
+ * Delete order from Google Sheets
+ */
+export const deleteOrderFromGoogleSheets = async (orderId) => {
+  const payload = {
+    targetSheet: 'Заказы',
+    action: 'DELETE',
+    id: orderId
+  };
+  return postToGSheetWebhook(payload);
+};
+
+/**
+ * Fetch full database directly from Google Sheets online (Orders, Users, Clients, Finances, Logs)
  */
 export const fetchFromGoogleSheets = async () => {
   const config = getGoogleSheetConfig();

@@ -2,6 +2,16 @@
   "orders": [],
   "users": [
     {
+      "id": "USR-5234",
+      "username": "akobir",
+      "name": "ффыва",
+      "pass": "akobir",
+      "role": "courier",
+      "phone": "+998 200022099",
+      "status": "active",
+      "createdDate": "08.08.2026, 08:06:35"
+    },
+    {
       "id": "USR-1",
       "username": "admin",
       "pass": "admin123",

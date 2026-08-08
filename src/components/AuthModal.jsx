@@ -22,12 +22,9 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
   const [errorMsg, setErrorMsg] = useState('');
   const [successPendingMsg, setSuccessPendingMsg] = useState(null);
 
-  // Preset demo accounts for quick testing
+  // Master admin account
   const demoAccounts = [
-    { label: '👑 Админ', user: 'admin', pass: 'admin123' },
-    { label: '📞 Диспетчер', user: 'disp', pass: 'disp123' },
-    { label: '🚚 Курьер', user: 'courier', pass: 'courier123' },
-    { label: '🧺 Оператор стирки', user: 'washer', pass: 'washer123' }
+    { label: '👑 Админ', user: 'admin', pass: 'admin123' }
   ];
 
   const handleSubmit = (e) => {
