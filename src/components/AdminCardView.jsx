@@ -745,32 +745,120 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
       {/* SECTION 3: OPERATIONS & FINANCE CONTROL */}
       {activeSection === 'operations' && (
         <div className="responsive-grid-7-5" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          {/* Price List Editor */}
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              🏷️ Редактирование Прайс-листа (pricing_manager.py)
-            </h3>
+          {/* Service & Price Catalog Editor */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
+                  ⚙️ Управление Услугами, Ценами и Единицами измерний (Админ)
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Настраивайте стоимость и структуру измерения для Курьера и Цеха (Ковры в м², Курпача в метрах, Подушки в шт и т.д.)
+                </p>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {pricingList.map((svc) => (
-                <div key={svc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: '700' }}>{svc.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Единица: {svc.unit}</div>
+              <button 
+                onClick={() => {
+                  const newSvc = {
+                    id: `S-${Date.now().toString().slice(-4)}`,
+                    name: 'Новая услуга',
+                    category: 'Текстиль',
+                    unit: 'шт',
+                    price: 20000,
+                    icon: 'Sparkles'
+                  };
+                  setPricingList([...pricingList, newSvc]);
+                }}
+                className="btn btn-primary"
+                style={{ fontSize: '13px', padding: '8px 14px' }}
+              >
+                <Plus size={16} /> Добавить Услугу
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
+              {pricingList.map((svc, idx) => (
+                <div 
+                  key={svc.id} 
+                  style={{ 
+                    background: 'rgba(255, 255, 255, 0.03)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '12px', 
+                    padding: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: '800' }}>ID: {svc.id}</span>
+                    <button 
+                      onClick={() => setPricingList(pricingList.filter(s => s.id !== svc.id))} 
+                      className="btn-icon" 
+                      title="Удалить услугу"
+                    >
+                      <Trash2 size={15} color="#f43f5e" />
+                    </button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+                  <div className="input-group">
+                    <label className="input-label">Название услуги *</label>
                     <input 
-                      type="number" 
-                      value={svc.price}
-                      onChange={(e) => handlePriceChange(svc.id, e.target.value)}
+                      type="text" 
+                      value={svc.name}
+                      onChange={(e) => {
+                        const updated = pricingList.map(s => s.id === svc.id ? { ...s, name: e.target.value } : s);
+                        setPricingList(updated);
+                      }}
                       className="input-field"
-                      style={{ width: '110px', padding: '6px', textAlign: 'right' }}
+                      placeholder="Например: Мойка курпачи"
                     />
-                    <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>сум</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="input-group">
+                      <label className="input-label">Единица измерения *</label>
+                      <select 
+                        value={svc.unit}
+                        onChange={(e) => {
+                          const updated = pricingList.map(s => s.id === svc.id ? { ...s, unit: e.target.value } : s);
+                          setPricingList(updated);
+                        }}
+                        className="select-field"
+                      >
+                        <option value="м²">м² (кв. метры)</option>
+                        <option value="метр">метр (погонный)</option>
+                        <option value="шт">шт (штука)</option>
+                        <option value="комплект">комплект</option>
+                        <option value="место">посадочное место</option>
+                      </select>
+                    </div>
+
+                    <div className="input-group">
+                      <label className="input-label">Цена (сум) *</label>
+                      <input 
+                        type="number" 
+                        value={svc.price}
+                        onChange={(e) => handlePriceChange(svc.id, e.target.value)}
+                        className="input-field"
+                        style={{ color: '#10b981', fontWeight: '800' }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            <button 
+              onClick={() => {
+                localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(pricingList));
+                alert('✅ Прайс-лист и структура услуг сохранены! Доступны курьеру и цеху.');
+              }}
+              className="btn btn-primary"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', padding: '12px', marginTop: '10px' }}
+            >
+              <CheckCircle2 size={18} /> Сохранить изменения для всех курьеров и цеха
+            </button>
           </div>
 
           {/* Debts & Salary Modules */}

@@ -81,8 +81,20 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [smsSending, setSmsSending] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState(null);
 
-  // Pickup Form state
+  // Load dynamic service catalog (configured by Admin)
+  const availableServices = (() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_service_catalog');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return serviceCatalog;
+  })();
+
+  // Pickup Form state & dynamic items list
   const [pickupItemsCount, setPickupItemsCount] = useState(1);
+  const [pickupItemsList, setPickupItemsList] = useState([
+    { serviceId: 'S-1', name: 'Мойка ковров', unit: 'м²', qty: 1, price: 15000 }
+  ]);
   const [pickupConditionNotes, setPickupConditionNotes] = useState('');
   const [gpsLocation, setGpsLocation] = useState('');
   const [standardPricePerM2, setStandardPricePerM2] = useState(14000);
@@ -240,20 +252,62 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     }
   };
 
-  // Confirm Pickup with Negotiated Price & GPS location
+  // Open Pickup Modal with initial items
+  const openPickupModal = (order) => {
+    setPickupModalOrder(order);
+    setGpsLocation(order.gpsLocation || '');
+    setPickupConditionNotes('');
+    setNegotiatedNotes('');
+
+    if (order.items && order.items.length > 0) {
+      setPickupItemsList(order.items.map(it => ({
+        serviceId: it.serviceId || 'S-1',
+        name: it.serviceName || it.name?.split(' (')[0] || 'Мойка ковров',
+        unit: it.unit || 'м²',
+        qty: it.qty || 1,
+        price: it.price || 15000
+      })));
+    } else {
+      const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+      setPickupItemsList([
+        { serviceId: defaultSvc.id, name: defaultSvc.name, unit: defaultSvc.unit, qty: 1, price: defaultSvc.price }
+      ]);
+    }
+  };
+
+  // Confirm Pickup with dynamic items (ковры, курпачи, подушки, занавески, мебель...)
   const handleConfirmPickupSubmit = (e) => {
     e.preventDefault();
     if (!pickupModalOrder) return;
 
+    const totalItemsQty = pickupItemsList.reduce((sum, item) => sum + (parseInt(item.qty) || 1), 0);
+    const itemsFormatted = pickupItemsList.map(it => {
+      const unitPrice = parseFloat(it.price) || 0;
+      const qty = parseInt(it.qty) || 1;
+      const total = (it.unit === 'шт' || it.unit === 'комплект' || it.unit === 'место') ? qty * unitPrice : 0;
+      return {
+        name: `${it.name} (${it.unit})`,
+        serviceName: it.name,
+        unit: it.unit,
+        qty: qty,
+        price: unitPrice,
+        total: total
+      };
+    });
+
+    const fixedTotalAmount = itemsFormatted.reduce((sum, it) => sum + (it.total || 0), 0);
+
+    const itemsSummaryStr = pickupItemsList.map(i => `${i.name}: ${i.qty} ${i.unit}`).join(', ');
+    const customNote = `[Забор курьером: ${itemsSummaryStr}. ${pickupConditionNotes ? 'Состояние: ' + pickupConditionNotes : ''} ${negotiatedNotes ? 'Договоренность: ' + negotiatedNotes : ''}]`;
+
     setOrders(orders.map(o => {
       if (o.id === pickupModalOrder.id) {
-        const customNote = `[Забор курьером: ${pickupItemsCount} шт. Согласованная цена: ${agreedPricePerM2} сум/м² (Стандарт: ${standardPricePerM2} сум/м²). ${pickupConditionNotes ? 'Состояние: ' + pickupConditionNotes : ''} ${negotiatedNotes ? 'Договоренность: ' + negotiatedNotes : ''}]`;
         return {
           ...o,
           status: 'cleaning',
-          itemsCount: pickupItemsCount,
-          agreedPricePerM2: agreedPricePerM2,
-          standardPricePerM2: standardPricePerM2,
+          itemsCount: totalItemsQty,
+          items: itemsFormatted,
+          totalAmount: fixedTotalAmount > 0 ? fixedTotalAmount : (o.totalAmount || 0),
           gpsLocation: gpsLocation || o.gpsLocation || '',
           notes: (o.notes ? o.notes + ' | ' : '') + customNote
         };
@@ -261,7 +315,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       return o;
     }));
 
-    alert(`Заказ #${pickupModalOrder.id} успешно принят курьером! GPS локация забора (${gpsLocation || 'сохранена'}) привязана для построения маршрута.`);
+    alert(`Заказ #${pickupModalOrder.id} успешно принят курьером! Состав: ${itemsSummaryStr}. Статус изменен на "В цеху".`);
     setPickupModalOrder(null);
   };
 
@@ -1166,14 +1220,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
 
                     {activeSubTab === 'pickups' ? (
                       <button 
-                        onClick={() => { 
-                          setPickupModalOrder(order); 
-                          setPickupItemsCount(order.items?.length || 1); 
-                          setPickupConditionNotes(''); 
-                          setAgreedPricePerM2(order.agreedPricePerM2 || 12000); 
-                          setStandardPricePerM2(14000); 
-                          setNegotiatedNotes(''); 
-                        }}
+                        onClick={() => openPickupModal(order)}
                         className="btn btn-primary"
                         style={{
                           background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)',
@@ -1236,63 +1283,113 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               )}
             </div>
 
-            <form onSubmit={handleConfirmPickupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="input-group">
-                <label className="input-label">Фактическое кол-во принятых ковров/вещей (шт) *</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  required
-                  value={pickupItemsCount} 
-                  onChange={(e) => setPickupItemsCount(parseInt(e.target.value) || 1)} 
-                  className="input-field" 
-                  style={{ fontSize: '15px', fontWeight: '800' }}
-                />
-              </div>
-
-              {/* Negotiated Price per m2 */}
-              <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div className="input-group">
-                  <label className="input-label">Стандартная цена (сум/м²)</label>
-                  <input 
-                    type="number" 
-                    value={standardPricePerM2} 
-                    onChange={(e) => setStandardPricePerM2(parseFloat(e.target.value) || 14000)} 
-                    className="input-field" 
-                  />
+            <form onSubmit={handleConfirmPickupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Dynamic Items Picker: Что ты берешь? */}
+              <div style={{ background: 'rgba(250, 204, 21, 0.12)', border: '1.5px solid #facc15', padding: '14px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '900', color: '#facc15', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Package size={18} />
+                  <span>📦 ЧТО ТЫ БЕРЁШЬ У КЛИЕНТА?</span>
                 </div>
-                <div className="input-group">
-                  <label className="input-label" style={{ color: '#10b981' }}>Согласованная цена (сум/м²) *</label>
-                  <input 
-                    type="number" 
-                    required
-                    value={agreedPricePerM2} 
-                    onChange={(e) => setAgreedPricePerM2(parseFloat(e.target.value) || 12000)} 
-                    className="input-field" 
-                    style={{ borderColor: '#10b981', color: '#10b981', fontWeight: '800' }}
-                  />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {pickupItemsList.map((item, idx) => (
+                    <div key={idx} style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#38bdf8' }}>Позиция #{idx + 1}</span>
+                        {pickupItemsList.length > 1 && (
+                          <button type="button" onClick={() => setPickupItemsList(pickupItemsList.filter((_, i) => i !== idx))} className="btn-icon" style={{ padding: '2px' }}>
+                            <X size={14} color="#f43f5e" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px' }}>
+                        <div className="input-group">
+                          <label className="input-label" style={{ fontSize: '10.5px' }}>Услуга / Продукт</label>
+                          <select 
+                            value={item.name}
+                            onChange={(e) => {
+                              const selectedSvc = availableServices.find(s => s.name === e.target.value);
+                              const nextList = [...pickupItemsList];
+                              nextList[idx] = {
+                                ...nextList[idx],
+                                name: e.target.value,
+                                unit: selectedSvc?.unit || 'шт',
+                                price: selectedSvc?.price || nextList[idx].price
+                              };
+                              setPickupItemsList(nextList);
+                            }}
+                            className="select-field"
+                            style={{ fontSize: '12.5px', padding: '6px 8px' }}
+                          >
+                            {availableServices.map(svc => (
+                              <option key={svc.id} value={svc.name}>
+                                {svc.name} ({svc.unit})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="input-group">
+                          <label className="input-label" style={{ fontSize: '10.5px' }}>Кол-во ({item.unit}) *</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            required
+                            value={item.qty}
+                            onChange={(e) => {
+                              const nextList = [...pickupItemsList];
+                              nextList[idx].qty = parseInt(e.target.value) || 1;
+                              setPickupItemsList(nextList);
+                            }}
+                            className="input-field"
+                            style={{ fontSize: '13px', fontWeight: '800', padding: '6px 8px' }}
+                          />
+                        </div>
+
+                        <div className="input-group">
+                          <label className="input-label" style={{ fontSize: '10.5px' }}>Ставка ({item.unit})</label>
+                          <input 
+                            type="number"
+                            value={item.price}
+                            onChange={(e) => {
+                              const nextList = [...pickupItemsList];
+                              nextList[idx].price = parseFloat(e.target.value) || 0;
+                              setPickupItemsList(nextList);
+                            }}
+                            className="input-field"
+                            style={{ fontSize: '12.5px', color: '#10b981', fontWeight: '800', padding: '6px 8px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+                    setPickupItemsList([
+                      ...pickupItemsList,
+                      { serviceId: firstSvc.id, name: firstSvc.name, unit: firstSvc.unit, qty: 1, price: firstSvc.price }
+                    ]);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '12px', padding: '8px', borderStyle: 'dashed' }}
+                >
+                  <Plus size={14} /> Добавить еще продукт (курпачи, подушки, занавески...)
+                </button>
               </div>
 
               <div className="input-group">
-                <label className="input-label">Договоренности по цене / скидкам с клиентом</label>
-                <input 
-                  type="text" 
-                  value={negotiatedNotes} 
-                  onChange={(e) => setNegotiatedNotes(e.target.value)} 
-                  className="input-field" 
-                  placeholder="Например: Скидка за объем 12000 сум вместо 14000 сум" 
-                />
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Примечания к состоянию изделий (пятна/износ)</label>
+                <label className="input-label">Примечания к состоянию изделий (пятна / дефекты / договоренности)</label>
                 <input 
                   type="text" 
                   value={pickupConditionNotes} 
                   onChange={(e) => setPickupConditionNotes(e.target.value)} 
                   className="input-field" 
-                  placeholder="Например: Пятна кофе на ковре, износ бахромы" 
+                  placeholder="Например: Пятна на курпаче, износ ковра" 
                 />
               </div>
 
