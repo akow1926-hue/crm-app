@@ -26,8 +26,8 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
     landmark: targetOrder?.landmark || '',
     status: targetOrder?.status || 'new',
     paymentStatus: targetOrder?.paymentStatus || 'unpaid',
-    items: targetOrder?.items || [{ name: serviceCatalog[0].name, qty: 10, price: serviceCatalog[0].price, total: serviceCatalog[0].price * 10 }],
-    totalAmount: targetOrder?.totalAmount || 150000,
+    items: targetOrder?.items || [],
+    totalAmount: targetOrder?.totalAmount || 0,
     paidAmount: targetOrder?.paidAmount || 0,
     assignedCourier: targetOrder?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
     assignedWasher: targetOrder?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
@@ -43,12 +43,6 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
   const [isSMSModalOpen, setIsSMSModalOpen] = useState(false);
   const [smsText, setSmsText] = useState('');
   const [smsSending, setSmsSending] = useState(false);
-
-  useEffect(() => {
-    // Recalculate total amount from items
-    const sum = formData.items.reduce((acc, it) => acc + (it.total || 0), 0);
-    setFormData(prev => ({ ...prev, totalAmount: sum }));
-  }, [formData.items]);
 
   useEffect(() => {
     // Default SMS text template based on status
@@ -199,9 +193,9 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Dispatcher Notice */}
+          {/* Dispatcher Header Info */}
           <div style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid rgba(6, 182, 212, 0.3)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: '#38bdf8' }}>
-            💡 <strong>Диспетчер оформляет выезд:</strong> ФИО, телефон, район, адрес, удобное время и курьера. Позиции изделий, согласованная цена (например 12 000 сум вместо 14 000 сум) и точная GPS-локация забора указываются курьером при приеме!
+            📋 <strong>Форма Диспетчера:</strong> Заполните контактные данные клиента, примерный адрес, договоренную сумму и назначьте курьера. Статус заказа автоматически устанавливается в <strong>«Ожидает забора»</strong>.
           </div>
 
           {/* Client Details Grid */}
@@ -214,34 +208,116 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
                 value={formData.clientName} 
                 onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                 className="input-field" 
+                placeholder="Имя и фамилия"
               />
             </div>
 
             <div className="input-group">
-              <label className="input-label">Телефон *</label>
+              <label className="input-label">Телефон Клиента *</label>
               <input 
                 type="text" 
                 required
                 value={formData.phone} 
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="input-field" 
+                placeholder="+998 90 123 45 67"
               />
             </div>
           </div>
 
-          <div className="input-group">
-            <label className="input-label">Точный адрес забора / доставки *</label>
-            <input 
-              type="text" 
-              required
-              value={formData.address} 
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="input-field" 
-              placeholder="Улица, дом, квартира"
-            />
+          <div className="responsive-grid-4" style={{ gridTemplateColumns: '2fr 1fr' }}>
+            <div className="input-group">
+              <label className="input-label">Примерный адрес забора / доставки *</label>
+              <input 
+                type="text" 
+                required
+                value={formData.address} 
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="input-field" 
+                placeholder="Улица, дом, квартира, махалля"
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Ориентиры адреса</label>
+              <input 
+                type="text" 
+                value={formData.landmark} 
+                onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
+                className="input-field" 
+                placeholder="Рядом с Корзинкой / Ворота"
+              />
+            </div>
           </div>
 
+          {/* Amount, Courier, Language Grid */}
           <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="input-group">
+              <label className="input-label" style={{ color: 'var(--accent-secondary)', fontWeight: '800' }}>
+                💰 Договоренная сумма (сум) *
+              </label>
+              <input 
+                type="number" 
+                required
+                value={formData.totalAmount} 
+                onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                className="input-field" 
+                placeholder="Например: 150000"
+                style={{ fontSize: '15px', fontWeight: '800', color: '#fff' }}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">🚚 Назначить курьера *</label>
+              <select 
+                value={formData.assignedCourier} 
+                onChange={(e) => setFormData({ ...formData, assignedCourier: e.target.value })}
+                className="select-field"
+              >
+                {activeCouriers.length > 0 ? (
+                  activeCouriers.map(c => (
+                    <option key={c.id || c.username} value={c.name || c.username}>
+                      {c.name} (@{c.username})
+                    </option>
+                  ))
+                ) : (
+                  <option value="Не назначен">Не назначен</option>
+                )}
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">🌐 Язык общения клиента *</label>
+              <select 
+                value={formData.language}
+                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                className="select-field"
+              >
+                <option value="Русский">Русский язык</option>
+                <option value="Узбекский">O'zbek tili</option>
+                <option value="Таджикский">Тоҷикӣ</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Status & District Grid */}
+          <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="input-group">
+              <label className="input-label">Статус заказа</label>
+              <select 
+                value={formData.status} 
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="select-field"
+              >
+                <option value="new">⏳ Ожидает забора</option>
+                <option value="pickup">🚚 Забор курьером</option>
+                <option value="cleaning">🧼 В цеху (Стирка)</option>
+                <option value="ready">✨ Готов к отправке</option>
+                <option value="delivery">📦 На доставке</option>
+                <option value="done">✅ Выполнен</option>
+              </select>
+            </div>
+
             <div className="input-group">
               <label className="input-label">Район города (Самарканд)</label>
               <select 
@@ -260,136 +336,15 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
             </div>
 
             <div className="input-group">
-              <label className="input-label">Язык общения с клиентом</label>
-              <select 
-                value={formData.language}
-                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                className="select-field"
-              >
-                <option value="Русский">Русский язык</option>
-                <option value="Узбекский">O'zbek tili</option>
-                <option value="Таджикский">Тоҷикӣ</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Временной слот забора</label>
-              <select 
-                value={formData.timeSlot}
-                onChange={(e) => setFormData({ ...formData, timeSlot: e.target.value })}
-                className="select-field"
-              >
-                <option value="В любое время">В любое время</option>
-                <option value="Утро (09:00 - 12:00)">Утро (09:00 - 12:00)</option>
-                <option value="День (12:00 - 17:00)">День (12:00 - 17:00)</option>
-                <option value="Вечер (17:00 - 21:00)">Вечер (17:00 - 21:00)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">Ориентиры адреса (для курьера)</label>
-            <input 
-              type="text" 
-              value={formData.landmark} 
-              onChange={(e) => setFormData({ ...formData, landmark: e.target.value })}
-              className="input-field" 
-              placeholder="Например: Рядом с корзинкой, зеленые ворота"
-            />
-          </div>
-
-          {/* Items Editor */}
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', minWidth: '500px' }}>
-              <label className="input-label">Позиции стирки / услуги</label>
-              <button type="button" onClick={addItemRow} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                + Добавить услугу
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '500px' }}>
-              {formData.items.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input 
-                    type="text" 
-                    value={item.name} 
-                    onChange={(e) => updateItemRow(idx, 'name', e.target.value)}
-                    className="input-field"
-                    style={{ flex: 2 }} 
-                  />
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={item.qty} 
-                    onChange={(e) => updateItemRow(idx, 'qty', e.target.value)}
-                    className="input-field"
-                    style={{ width: '80px' }} 
-                  />
-                  <input 
-                    type="number" 
-                    value={item.price} 
-                    onChange={(e) => updateItemRow(idx, 'price', e.target.value)}
-                    className="input-field"
-                    style={{ width: '120px' }} 
-                  />
-                  <div style={{ fontWeight: '800', width: '110px', textAlign: 'right', color: 'var(--accent-secondary)' }}>
-                    {(item.total || 0).toLocaleString()} сум
-                  </div>
-                  <button type="button" onClick={() => removeItemRow(idx)} className="btn-icon" style={{ color: '#f43f5e' }}>
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Status & Staff Grid */}
-          <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <div className="input-group">
-              <label className="input-label">Статус заказа</label>
-              <select 
-                value={formData.status} 
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="select-field"
-              >
-                <option value="new">Ожидает забора</option>
-                <option value="pickup">Забор курьером</option>
-                <option value="cleaning">В цеху (Стирка)</option>
-                <option value="ready">Готов к отправке</option>
-                <option value="delivery">На доставке</option>
-                <option value="done">Выполнен</option>
-              </select>
-            </div>
-
-            <div className="input-group">
               <label className="input-label">Статус оплаты</label>
               <select 
                 value={formData.paymentStatus} 
                 onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value, paidAmount: e.target.value === 'paid' ? formData.totalAmount : 0 })}
                 className="select-field"
               >
-                <option value="unpaid">Не оплачено (Долг)</option>
-                <option value="paid">Оплачено полностью</option>
-                <option value="partial">Частичная оплата</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Назначенный курьер</label>
-              <select 
-                value={formData.assignedCourier} 
-                onChange={(e) => setFormData({ ...formData, assignedCourier: e.target.value })}
-                className="select-field"
-              >
-                {activeCouriers.length > 0 ? (
-                  activeCouriers.map(c => (
-                    <option key={c.id || c.username} value={c.name || c.username}>
-                      {c.name} (@{c.username})
-                    </option>
-                  ))
-                ) : (
-                  <option value="Не назначен">Не назначен (Создайте курьера в панели)</option>
-                )}
+                <option value="unpaid">🔴 Не оплачено (Долг)</option>
+                <option value="paid">🟢 Оплачено полностью</option>
+                <option value="partial">🟡 Частичная оплата</option>
               </select>
             </div>
           </div>
