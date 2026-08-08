@@ -82,7 +82,6 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    syncOrderToGoogleSheets(formData, 'SAVE').catch(() => {});
     onSave(formData);
   };
 
@@ -304,7 +303,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
           </div>
 
           {/* Status & District Grid */}
-          <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+          <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div className="input-group">
               <label className="input-label">Статус заказа</label>
               <select 
@@ -335,19 +334,6 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers }) 
                 <option value="Саттепо">Саттепо</option>
                 <option value="Железнодорожный">Железнодорожный</option>
                 <option value="Самаркандский р-н">Самаркандский р-н</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Статус оплаты</label>
-              <select 
-                value={formData.paymentStatus} 
-                onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value, paidAmount: e.target.value === 'paid' ? formData.totalAmount : 0 })}
-                className="select-field"
-              >
-                <option value="unpaid">🔴 Не оплачено (Долг)</option>
-                <option value="paid">🟢 Оплачено полностью</option>
-                <option value="partial">🟡 Частичная оплата</option>
               </select>
             </div>
           </div>
