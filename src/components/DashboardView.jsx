@@ -176,7 +176,7 @@ export default function DashboardView({ orders, clients, activityLogs, onOpenNew
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontWeight: '800', color: 'var(--accent-secondary)' }}>#{order.id}</span>
+                    <span style={{ fontWeight: '800', color: 'var(--accent-secondary)' }}>{order.id ? `#${order.id}` : 'Б/Н'}</span>
                     <span style={{ fontSize: '14px', fontWeight: '700' }}>{order.clientName}</span>
                     {order.urgent && (
                       <span className="badge badge-cancel" style={{ fontSize: '10px' }}>

@@ -215,8 +215,8 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <GripVertical size={14} color="var(--text-dim)" style={{ cursor: 'grab' }} />
-                            <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
-                              #{order.id}
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
+                              {order.id ? `#${order.id}` : 'Б/Н'}
                             </span>
                             {order.urgent && (
                               <span className="badge badge-cancel" style={{ fontSize: '9px', padding: '2px 6px' }}>

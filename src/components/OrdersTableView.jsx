@@ -183,8 +183,10 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
                       </button>
                     </td>
 
-                    <td style={{ padding: '14px 16px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
-                      #{order.id}
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ fontWeight: '800', color: 'var(--accent-secondary)' }}>
+                        {order.id ? `#${order.id}` : 'Б/Н'}
+                      </span>
                       {order.urgent && (
                         <span style={{ display: 'block', fontSize: '9px', color: '#f43f5e', fontWeight: '700' }}>СРОЧНО</span>
                       )}

@@ -38,6 +38,14 @@ import { sendSMSNotification } from '../../services/smsService';
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
 
+  const getNextSequentialId = () => {
+    if (!orders || orders.length === 0) return '5254';
+    const nums = orders.map(o => parseInt(o.id, 10)).filter(n => !isNaN(n) && n > 1000);
+    if (nums.length === 0) return '5254';
+    const maxId = Math.max(...nums);
+    return String(Math.max(maxId + 1, 5254));
+  };
+
   // Tabs: 'pickups' (Забор) | 'deliveries' (Доставка) | 'newOrder' (Новый заказ с улицы)
   const [activeSubTab, setActiveSubTab] = useState('pickups');
   // Scope: 'my' (только мои заказы) | 'all' (все заказы CRM)
@@ -301,10 +309,20 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     const itemsSummaryStr = pickupItemsList.map(i => `${i.name}: ${i.qty} ${i.unit}`).join(', ');
     const customNote = `[Забор курьером: ${itemsSummaryStr}. ${pickupConditionNotes ? 'Состояние: ' + pickupConditionNotes : ''} ${negotiatedNotes ? 'Договоренность: ' + negotiatedNotes : ''}]`;
 
+    let assignedId = pickupModalOrder.id;
+    if (!assignedId || assignedId === 'Б/Н' || assignedId === '-') {
+      assignedId = getNextSequentialId();
+    }
+
     setOrders(orders.map(o => {
-      if (o.id === pickupModalOrder.id) {
+      const isTarget = (o.id && pickupModalOrder.id && o.id === pickupModalOrder.id) ||
+                       (o.tempId && pickupModalOrder.tempId && o.tempId === pickupModalOrder.tempId) ||
+                       (o === pickupModalOrder) ||
+                       (!o.id && o.clientName === pickupModalOrder.clientName && o.createdDate === pickupModalOrder.createdDate);
+      if (isTarget) {
         return {
           ...o,
+          id: assignedId,
           status: 'cleaning',
           itemsCount: totalItemsQty,
           items: itemsFormatted,
@@ -316,7 +334,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       return o;
     }));
 
-    alert(`Заказ #${pickupModalOrder.id} успешно принят курьером! Состав: ${itemsSummaryStr}. Статус изменен на "В цеху".`);
+    alert(`Заказ принято у клиента! Выдан официальный номер заказа: #${assignedId}. Состав: ${itemsSummaryStr}. Передан в цех.`);
     setPickupModalOrder(null);
   };
 
@@ -401,7 +419,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   // Create Street Order
   const handleCreateStreetOrder = (e) => {
     e.preventDefault();
-    const newId = `${Math.floor(5200 + Math.random() * 500)}`;
+    const newId = getNextSequentialId();
     const newOrderObj = {
       id: newId,
       clientName: streetOrder.clientName || 'Клиент с улицы',
@@ -813,37 +831,41 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               const isPartial = order.paymentStatus === 'partial';
               const dispatcherName = order.dispatcherName || order.createdBy || 'Диспетчерская служба';
               const commentText = order.notes || order.comment || '';
-              const orderId = order.id || '-';
+              const orderId = (order.id && order.id !== 'Б/Н' && order.id !== '-') ? order.id : null;
 
               return (
                 <div 
-                  key={order.id} 
+                  key={order.tempId || order.id || Math.random()} 
                   className="glass-card"
                   style={{
                     background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 17, 40, 0.98) 100%)',
                     border: order.urgent ? '1.5px solid #f43f5e' : '1.5px solid rgba(59, 130, 246, 0.3)',
                     borderLeft: order.urgent ? '6px solid #f43f5e' : '6px solid #facc15',
                     borderRadius: '20px',
-                    padding: '18px',
+                    padding: '14px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '14px',
-                    boxShadow: order.urgent ? '0 10px 30px rgba(244, 63, 94, 0.25)' : '0 10px 30px rgba(0, 0, 0, 0.5)'
+                    boxShadow: order.urgent ? '0 10px 30px rgba(244, 63, 94, 0.25)' : '0 10px 30px rgba(0, 0, 0, 0.5)',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    width: '100%',
+                    maxWidth: '100%'
                   }}
                 >
                   {/* Card Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
                       <span style={{
-                        background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)',
-                        color: '#070d1e',
-                        padding: '4px 12px',
+                        background: orderId ? 'linear-gradient(135deg, #facc15 0%, #eab308 100%)' : 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
+                        color: orderId ? '#070d1e' : '#ffffff',
+                        padding: '4px 10px',
                         borderRadius: '10px',
                         fontWeight: '900',
-                        fontSize: '14px',
-                        boxShadow: '0 2px 8px rgba(250, 204, 21, 0.4)'
+                        fontSize: '13.5px',
+                        boxShadow: orderId ? '0 2px 8px rgba(250, 204, 21, 0.4)' : 'none'
                       }}>
-                        📦 Заказ #{orderId}
+                        📦 {orderId ? `Заказ #${orderId}` : 'Заказ (Б/Н)'}
                       </span>
 
                       {order.urgent && (
@@ -1180,19 +1202,21 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
 
       {/* MODAL 1: Confirm Pickup */}
       {pickupModalOrder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '16px' }}>
-          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-modal)', border: '1.5px solid #facc15' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '12px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-modal)', border: '1.5px solid #facc15', padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ background: '#facc15', color: '#070d1e', padding: '3px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '13px' }}>
-                  #{pickupModalOrder.id}
+                  {pickupModalOrder.id ? `#${pickupModalOrder.id}` : 'Б/Н'}
                 </span>
-                <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#fff' }}>Прием заказа у клиента</h3>
+                <h3 style={{ fontSize: '16.5px', fontWeight: '800', color: '#fff', wordBreak: 'break-word' }}>
+                  {pickupModalOrder.id ? 'Прием заказа у клиента' : 'Прием заказа (ID выдается при замере)'}
+                </h3>
               </div>
               <button onClick={() => setPickupModalOrder(null)} className="btn-icon"><X size={18}/></button>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '10px 12px', borderRadius: '10px', fontSize: '13px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '10px 12px', borderRadius: '10px', fontSize: '13px', wordBreak: 'break-word' }}>
               <div>👤 <strong>Клиент:</strong> {pickupModalOrder.clientName} ({pickupModalOrder.phone || pickupModalOrder.clientPhone})</div>
               <div style={{ marginTop: '2px' }}>🏠 <strong>Адрес:</strong> {pickupModalOrder.address}</div>
               {pickupModalOrder.notes && (
@@ -1212,7 +1236,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {pickupItemsList.map((item, idx) => (
-                    <div key={idx} style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div key={idx} style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '12px', fontWeight: '800', color: '#38bdf8' }}>Позиция #{idx + 1}</span>
                         {pickupItemsList.length > 1 && (
@@ -1222,9 +1246,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                         )}
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px' }}>
-                        <div className="input-group">
-                          <label className="input-label" style={{ fontSize: '10.5px' }}>Услуга / Продукт</label>
+                      {/* Stacked mobile-responsive inputs */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div className="input-group" style={{ width: '100%' }}>
+                          <label className="input-label" style={{ fontSize: '11px' }}>Услуга / Продукт</label>
                           <select 
                             value={item.name}
                             onChange={(e) => {
@@ -1239,7 +1264,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                               setPickupItemsList(nextList);
                             }}
                             className="select-field"
-                            style={{ fontSize: '12.5px', padding: '6px 8px' }}
+                            style={{ fontSize: '13px', padding: '8px 10px', width: '100%' }}
                           >
                             {availableServices.map(svc => (
                               <option key={svc.id} value={svc.name}>
@@ -1249,36 +1274,38 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                           </select>
                         </div>
 
-                        <div className="input-group">
-                          <label className="input-label" style={{ fontSize: '10.5px' }}>Кол-во ({item.unit}) *</label>
-                          <input 
-                            type="number" 
-                            min="1"
-                            required
-                            value={item.qty}
-                            onChange={(e) => {
-                              const nextList = [...pickupItemsList];
-                              nextList[idx].qty = parseInt(e.target.value) || 1;
-                              setPickupItemsList(nextList);
-                            }}
-                            className="input-field"
-                            style={{ fontSize: '13px', fontWeight: '800', padding: '6px 8px' }}
-                          />
-                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '11px' }}>Кол-во ({item.unit}) *</label>
+                            <input 
+                              type="number" 
+                              min="1"
+                              required
+                              value={item.qty}
+                              onChange={(e) => {
+                                const nextList = [...pickupItemsList];
+                                nextList[idx].qty = parseInt(e.target.value) || 1;
+                                setPickupItemsList(nextList);
+                              }}
+                              className="input-field"
+                              style={{ fontSize: '13.5px', fontWeight: '800', padding: '8px 10px' }}
+                            />
+                          </div>
 
-                        <div className="input-group">
-                          <label className="input-label" style={{ fontSize: '10.5px' }}>Ставка ({item.unit})</label>
-                          <input 
-                            type="number"
-                            value={item.price}
-                            onChange={(e) => {
-                              const nextList = [...pickupItemsList];
-                              nextList[idx].price = parseFloat(e.target.value) || 0;
-                              setPickupItemsList(nextList);
-                            }}
-                            className="input-field"
-                            style={{ fontSize: '12.5px', color: '#10b981', fontWeight: '800', padding: '6px 8px' }}
-                          />
+                          <div className="input-group">
+                            <label className="input-label" style={{ fontSize: '11px' }}>Ставка ({item.unit})</label>
+                            <input 
+                              type="number"
+                              value={item.price}
+                              onChange={(e) => {
+                                const nextList = [...pickupItemsList];
+                                nextList[idx].price = parseFloat(e.target.value) || 0;
+                                setPickupItemsList(nextList);
+                              }}
+                              className="input-field"
+                              style={{ fontSize: '13.5px', color: '#10b981', fontWeight: '800', padding: '8px 10px' }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

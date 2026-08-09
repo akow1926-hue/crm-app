@@ -217,8 +217,8 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 300px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
-                    Заказ #{order.id}
+                  <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
+                    {order.id ? `Заказ #${order.id}` : 'Заказ (Б/Н)'}
                   </span>
                   {order.urgent && (
                     <span className="badge badge-cancel" style={{ fontSize: '10px' }}>

@@ -219,7 +219,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
-                      #{order.id}
+                      {order.id ? `#${order.id}` : 'Б/Н'}
                     </span>
                     {order.urgent && (
                       <span className="badge badge-cancel" style={{ fontSize: '10px' }}>

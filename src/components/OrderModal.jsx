@@ -22,7 +22,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
   };
 
   const buildInitialFormData = (targetOrder) => ({
-    id: targetOrder?.id || getNextSequentialId(),
+    id: targetOrder?.id || null,
     clientName: targetOrder?.clientName || '',
     phone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',
     clientPhone: targetOrder?.phone || targetOrder?.clientPhone || '+998 ',
@@ -185,7 +185,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '20px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
-              Заказ #{formData.id}
+              {formData.id ? `Заказ #${formData.id}` : 'Заказ (Б/Н - Без номера)'}
             </span>
             <span className={`badge badge-${formData.status}`}>
               {formData.status.toUpperCase()}
