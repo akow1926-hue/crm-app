@@ -99,9 +99,9 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
           {!isCollapsed && (
             <div>
               <h1 style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '-0.3px', background: 'linear-gradient(135deg, #fff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {localStorage.getItem('cosmo_crm_company_name') || 'COSMO CLEANING'}
+                {localStorage.getItem('cosmo_crm_company_name') || 'COSMO CRM'}
               </h1>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Cleaning Service v3.0</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Cleaning & Laundry v3.5</span>
             </div>
           )}
         </div>

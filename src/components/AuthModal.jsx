@@ -133,24 +133,25 @@ export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUse
       }}>
         {/* Logo & Title */}
         <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '16px',
-            background: 'var(--accent-gradient)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 14px auto',
-            boxShadow: 'var(--shadow-glow)'
-          }}>
-            <Sparkles size={30} color="#fff" />
-          </div>
-          <h2 style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px' }}>
+          <img 
+            src="/logo.jpg" 
+            alt="Cosmo CRM Logo"
+            style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '20px',
+              objectFit: 'cover',
+              margin: '0 auto 12px auto',
+              border: '2px solid var(--accent-secondary)',
+              boxShadow: '0 0 20px rgba(6, 182, 212, 0.45)',
+              display: 'block'
+            }}
+          />
+          <h2 style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #fff 0%, #cbd5e1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             COSMO CRM
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {isRegister ? 'Регистрация нового сотрудника' : 'Вход в систему клининга и стирки'}
+            {isRegister ? 'Регистрация нового сотрудника' : 'Система управления стиркой и клинингом'}
           </p>
         </div>
 
