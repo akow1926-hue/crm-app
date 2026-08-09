@@ -90,15 +90,21 @@ export const sendRolePushNotification = async ({ title, body, role = 'all', icon
   }
 };
 
+import { autoNotifyOrderToTelegram } from './telegramBotService';
+
 /**
  * Helper triggers for specific role push notifications
  */
 export const notifyCourierNewOrder = (order) => {
+  // 1. Send native push notification
   sendRolePushNotification({
     title: `📥 Новый заказ на забор #${order.id}`,
     body: `Адрес: ${order.district || ''}, ${order.address}. Клиент: ${order.clientName} (${order.phone})`,
     role: 'courier'
   });
+
+  // 2. Auto-send interactive card to Telegram Bot / Courier Channel
+  autoNotifyOrderToTelegram(order).catch(() => {});
 };
 
 export const notifyWasherNewItem = (order) => {

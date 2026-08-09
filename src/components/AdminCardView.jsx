@@ -1135,6 +1135,32 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                   </div>
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="input-group">
+                    <label className="input-label">Chat ID группы / канала курьеров</label>
+                    <input 
+                      type="text" 
+                      placeholder="-1001234567890 или @group_name" 
+                      value={tgBotConfig.channelId || ''} 
+                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, channelId: e.target.value })}
+                      className="input-field" 
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '22px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="autoNotifyCouriers"
+                      checked={tgBotConfig.autoNotifyCouriers !== false}
+                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, autoNotifyCouriers: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="autoNotifyCouriers" style={{ fontSize: '12px', color: '#fff', cursor: 'pointer', fontWeight: '600' }}>
+                      Авто-отправка новых заказов в Telegram
+                    </label>
+                  </div>
+                </div>
+
                 {botTestResult && (
                   <div style={{ 
                     padding: '10px 12px', 

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { sendSMSNotification } from '../../services/smsService';
 import { getActiveCouriers } from '../../services/staffHelper';
+import { sendTelegramOrderCard, sendTelegramMessage, getTelegramBotConfig } from '../../services/telegramBotService';
 
 export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -55,17 +56,46 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
     return true;
   });
 
-  // Handle Telegram Broadcast
-  const handleSendTgBroadcast = (e) => {
+  // Handle Telegram Broadcast to couriers
+  const handleSendTgBroadcast = async (e) => {
     e.preventDefault();
     if (!tgMsgText.trim()) {
       alert('Введите текст сообщения для Telegram.');
       return;
     }
 
-    alert(`Сообщение успешно отправлено курьеру (${targetCourierTg}) в Telegram:\n"${tgMsgText}"`);
-    setIsTgModalOpen(false);
-    setTgMsgText('');
+    const config = getTelegramBotConfig();
+    if (!config.botToken) {
+      alert('⚠️ Токен Telegram-бота еще не настроен. Перейдите в меню "Карта Админа" → "Связи" для ввода токена бота.');
+      return;
+    }
+
+    const chatId = config.channelId || '@' + (config.botUsername || 'CosmoCourier_bot');
+    const res = await sendTelegramMessage(config.botToken, chatId, `📢 *СООБЩЕНИЕ ДИСПЕТЧЕРА (${targetCourierTg}):*\n\n${tgMsgText}`);
+
+    if (res.success) {
+      alert(`✅ Сообщение успешно доставлено в Telegram бот/канал курьеров!`);
+      setIsTgModalOpen(false);
+      setTgMsgText('');
+    } else {
+      alert(`Ошибка отправки в Telegram: ${res.error || 'Проверьте токен бота и Chat ID в Карте Админа'}`);
+    }
+  };
+
+  // Direct Send Order to Telegram Bot
+  const handleSendTelegramCard = async (order) => {
+    const config = getTelegramBotConfig();
+    if (!config.botToken) {
+      alert('⚠️ Токен Telegram-бота еще не настроен. Настройте его в "Карта Админа" → "Связи".');
+      return;
+    }
+
+    const res = await sendTelegramOrderCard(order);
+    if (res.success) {
+      alert(`✅ Заказ #${order.id} с кнопками навигатора и звонка успешно отправлен курьерам в Telegram!`);
+    } else {
+      alert(`Ошибка отправки: ${res.error || 'Проверьте настройки Telegram Бота'}`);
+    }
   };
 
   // Quick SMS to Client
@@ -250,6 +280,14 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                   </div>
 
                   <div style={{ display: 'flex', gap: '6px' }}>
+                    <button 
+                      onClick={() => handleSendTelegramCard(order)}
+                      className="btn btn-secondary" 
+                      style={{ fontSize: '11px', padding: '4px 8px', color: '#6366f1', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                      title="Отправить курьерам в Telegram с кнопками Навигатора"
+                    >
+                      <Send size={13} /> Telegram
+                    </button>
                     <button 
                       onClick={() => handleSendQuickSMS(order)}
                       className="btn btn-secondary" 

@@ -18,6 +18,7 @@ import {
 import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
 import { smsTemplates, sendSMSNotification } from '../services/smsService';
+import { sendTelegramOrderCard, getTelegramBotConfig } from '../services/telegramBotService';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [] }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -292,6 +293,21 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
     printWindow.print();
   };
 
+  const handleSendTelegram = async () => {
+    const config = getTelegramBotConfig();
+    if (!config.botToken) {
+      alert('⚠️ Токен Telegram-бота еще не настроен. Настройте его в разделе "Карта Админа" → "Связи".');
+      return;
+    }
+
+    const res = await sendTelegramOrderCard(formData);
+    if (res.success) {
+      alert(`✅ Заказ #${formData.id || 'Б/Н'} с кнопками Навигатора успешно отправлен в Telegram бот курьеров!`);
+    } else {
+      alert(`Ошибка отправки в Telegram: ${res.error || 'Проверьте токен бота и Chat ID в Карте Админа'}`);
+    }
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -332,7 +348,10 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
           </div>
 
           <div style={{ display: 'flex', gap: '6px' }}>
-            <button type="button" onClick={() => setIsSMSModalOpen(true)} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }} title="СМС Клиенту">
+            <button type="button" onClick={handleSendTelegram} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }} title="Отправить в Telegram курьерам">
+              <Send size={13} />
+            </button>
+            <button type="button" onClick={() => setIsSMSModalOpen(true)} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(6, 182, 212, 0.15)', color: '#22d3ee', borderColor: 'rgba(6, 182, 212, 0.3)' }} title="СМС Клиенту">
               <Smartphone size={13} />
             </button>
             <button type="button" onClick={printReceipt} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px' }} title="Печать чека">

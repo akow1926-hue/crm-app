@@ -31,12 +31,14 @@ import {
   AlertCircle,
   Edit3,
   Headphones,
-  Home
+  Home,
+  Send
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendSMSNotification } from '../../services/smsService';
+import { getTelegramBotConfig } from '../../services/telegramBotService';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -576,6 +578,18 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {getTelegramBotConfig().botUsername && (
+            <a 
+              href={`https://t.me/${getTelegramBotConfig().botUsername}?start=courier`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.4)', padding: '8px 12px', borderRadius: '10px' }}
+              title="Открыть рабочего бота курьеров в Telegram"
+            >
+              <Send size={14} /> Telegram Бот
+            </a>
+          )}
           <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', color: '#f43f5e', padding: '8px 14px', borderRadius: '10px' }}>
             <LogOut size={15} /> Выйти
           </button>
