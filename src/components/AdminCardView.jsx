@@ -46,6 +46,18 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
   const [isSendingTestGroupMsg, setIsSendingTestGroupMsg] = useState(false);
   const [testGroupMsgResult, setTestGroupMsgResult] = useState(null);
 
+  // Keep bot config in sync with localStorage and global events
+  useEffect(() => {
+    const loaded = getTelegramBotConfig();
+    setTgBotConfig(loaded);
+
+    const handleUpdate = (e) => {
+      if (e.detail) setTgBotConfig(e.detail);
+    };
+    window.addEventListener('tg_bot_config_updated', handleUpdate);
+    return () => window.removeEventListener('tg_bot_config_updated', handleUpdate);
+  }, []);
+
   // New Employee Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserForm, setNewUserForm] = useState({
@@ -1286,8 +1298,14 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                   <button 
                     type="button"
                     onClick={() => {
-                      saveTelegramBotConfig(tgBotConfig);
-                      alert('✅ Настройки общего Telegram-бота уведомлений успешно сохранены в CRM!');
+                      const ok = saveTelegramBotConfig(tgBotConfig);
+                      if (ok) {
+                        const fresh = getTelegramBotConfig();
+                        setTgBotConfig(fresh);
+                        alert(`✅ Настройки Telegram-бота сохранены!\nТокен: ${fresh.botToken ? 'Введен' : 'Не введен'}\nChat ID группы: ${fresh.channelId || 'Не указан'}`);
+                      } else {
+                        alert('Ошибка сохранения настроек бота.');
+                      }
                     }}
                     className="btn btn-primary"
                     style={{ flex: 1, minWidth: '160px', fontSize: '12px' }}

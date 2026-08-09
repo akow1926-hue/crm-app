@@ -7,6 +7,34 @@
 
 const STORAGE_KEY = 'cosmo_crm_tg_group_bot_config';
 const LEGACY_STORAGE_KEY = 'cosmo_crm_tg_courier_bot_config';
+const CHAT_ID_KEY = 'cosmo_crm_tg_chat_id';
+const BOT_TOKEN_KEY = 'cosmo_crm_tg_bot_token';
+
+// In-memory Deduplication History to prevent any duplicate messages
+const sentMessageHistory = new Map();
+
+function isDuplicateNotification(eventKey, orderId, windowMs = 8000) {
+  const cleanId = String(orderId || '').trim();
+  if (!cleanId || cleanId === 'Б/Н' || cleanId === '-') return false;
+  
+  const key = `${eventKey}_${cleanId}`;
+  const now = Date.now();
+  const lastSent = sentMessageHistory.get(key);
+  
+  if (lastSent && (now - lastSent) < windowMs) {
+    console.warn(`[Telegram Bot] Ignored duplicate notification for ${key} (sent ${(now - lastSent)}ms ago)`);
+    return true;
+  }
+  
+  sentMessageHistory.set(key, now);
+  // Periodically clean old cache entries
+  if (sentMessageHistory.size > 200) {
+    for (const [k, time] of sentMessageHistory.entries()) {
+      if (now - time > 60000) sentMessageHistory.delete(k);
+    }
+  }
+  return false;
+}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -16,24 +44,69 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * Normalizes Telegram Chat ID (handles negative group IDs, typographic dashes, @usernames, t.me links)
+ */
+export function normalizeChatId(raw) {
+  if (!raw) return '';
+  let str = String(raw).trim();
+  // Remove surrounding quotes and trailing/leading slashes
+  str = str.replace(/^["']|["']$/g, '').trim();
+  // Replace typographic minus/dash signs (—, –, −) with standard ASCII '-'
+  str = str.replace(/[—–−]/g, '-');
+  
+  // If user pasted a Telegram t.me link:
+  if (str.includes('t.me/c/')) {
+    const match = str.match(/t\.me\/c\/(\d+)/);
+    if (match) return `-100${match[1]}`;
+  } else if (str.includes('t.me/')) {
+    const match = str.match(/t\.me\/([a-zA-Z0-9_]+)/);
+    if (match && !['joinchat', 'c', 'share'].includes(match[1])) {
+      return `@${match[1]}`;
+    }
+  }
+  
+  return str;
+}
+
 export function getTelegramBotConfig() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        botToken: parsed.botToken || '',
-        botUsername: parsed.botUsername || 'CosmoCourier_bot',
-        channelId: parsed.channelId || '', // Common Telegram Group Chat ID (e.g. -1001234567890 or @group)
-        enabledEvents: {
-          created: parsed.enabledEvents?.created ?? true,
-          pickup: parsed.enabledEvents?.pickup ?? true,
-          ready: parsed.enabledEvents?.ready ?? true,
-          done: parsed.enabledEvents?.done ?? true
-        },
-        status: parsed.status || 'offline'
-      };
+    if (typeof window !== 'undefined' && window.__COSMO_TG_CONFIG) {
+      return window.__COSMO_TG_CONFIG;
     }
+
+    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    const directChatId = localStorage.getItem(CHAT_ID_KEY);
+    const directToken = localStorage.getItem(BOT_TOKEN_KEY);
+
+    let parsed = {};
+    if (saved) {
+      try {
+        parsed = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    const channelId = normalizeChatId(parsed.channelId || directChatId || '');
+    const botToken = (parsed.botToken || directToken || '').trim();
+
+    const finalConfig = {
+      botToken: botToken,
+      botUsername: parsed.botUsername || 'CosmoGroupNotifier_bot',
+      channelId: channelId,
+      enabledEvents: {
+        created: parsed.enabledEvents?.created ?? true,
+        pickup: parsed.enabledEvents?.pickup ?? true,
+        ready: parsed.enabledEvents?.ready ?? true,
+        done: parsed.enabledEvents?.done ?? true
+      },
+      status: botToken && channelId ? 'online' : 'offline'
+    };
+
+    if (typeof window !== 'undefined') {
+      window.__COSMO_TG_CONFIG = finalConfig;
+    }
+
+    return finalConfig;
   } catch (e) {
     console.error('Error reading telegram bot config:', e);
   }
@@ -54,22 +127,36 @@ export function getTelegramBotConfig() {
 
 export function saveTelegramBotConfig(config) {
   try {
+    const normalizedChatId = normalizeChatId(config.channelId);
+    const cleanToken = (config.botToken || '').trim();
+    const cleanUsername = (config.botUsername || '').trim().replace(/^@/, '');
+
     const payload = {
-      botToken: (config.botToken || '').trim(),
-      botUsername: (config.botUsername || '').trim().replace(/^@/, ''),
-      channelId: (config.channelId || '').trim(),
+      botToken: cleanToken,
+      botUsername: cleanUsername,
+      channelId: normalizedChatId,
       enabledEvents: {
         created: config.enabledEvents?.created !== false,
         pickup: config.enabledEvents?.pickup !== false,
         ready: config.enabledEvents?.ready !== false,
         done: config.enabledEvents?.done !== false
       },
-      status: config.botToken && config.channelId ? 'online' : 'offline'
+      status: cleanToken && normalizedChatId ? 'online' : 'offline',
+      updatedAt: Date.now()
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(payload));
-    window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: payload }));
+    // Save across all keys for persistent reliability
+    const serialized = JSON.stringify(payload);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    localStorage.setItem(LEGACY_STORAGE_KEY, serialized);
+    localStorage.setItem(CHAT_ID_KEY, normalizedChatId);
+    localStorage.setItem(BOT_TOKEN_KEY, cleanToken);
+
+    if (typeof window !== 'undefined') {
+      window.__COSMO_TG_CONFIG = payload;
+      window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: payload }));
+    }
+
     return true;
   } catch (e) {
     console.error('Error saving telegram bot config:', e);
@@ -106,13 +193,16 @@ export async function testTelegramBotToken(token) {
 
 // Send Raw Telegram Message with optional Inline Keyboard and HTML parse mode
 export async function sendTelegramMessage(token, chatId, htmlText, replyMarkup = null, parseMode = 'HTML') {
-  if (!token || !chatId) {
+  const cleanChatId = normalizeChatId(chatId);
+  const cleanToken = (token || '').trim();
+
+  if (!cleanToken || !cleanChatId) {
     return { success: false, error: 'Не указан токен бота или Chat ID общей группы' };
   }
 
   try {
     const payload = {
-      chat_id: chatId.trim(),
+      chat_id: cleanChatId,
       text: htmlText,
       parse_mode: parseMode,
       disable_web_page_preview: true
@@ -121,7 +211,7 @@ export async function sendTelegramMessage(token, chatId, htmlText, replyMarkup =
       payload.reply_markup = replyMarkup;
     }
 
-    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${cleanToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -136,21 +226,25 @@ export async function sendTelegramMessage(token, chatId, htmlText, replyMarkup =
 
 // Send Test Message to Group
 export async function testSendGroupMessage(token, chatId) {
-  if (!token) return { success: false, error: 'Введите токен бота' };
-  if (!chatId) return { success: false, error: 'Введите Chat ID общей группы' };
+  const cleanToken = (token || '').trim();
+  const cleanChatId = normalizeChatId(chatId);
+
+  if (!cleanToken) return { success: false, error: 'Введите токен бота' };
+  if (!cleanChatId) return { success: false, error: 'Введите Chat ID общей группы (например: -1001234567890)' };
 
   const testText = 
     `🤖 <b>COSMO CLEANING — ТЕСТОВОЕ СООБЩЕНИЕ</b>\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `✅ Бот-уведомитель успешно подключен к общей Telegram-группе!\n\n` +
+    `✅ Бот-уведомитель успешно подключен к общей Telegram-группе!\n` +
+    `🆔 Chat ID: <code>${cleanChatId}</code>\n\n` +
     `📢 <b>Автоматические статусы, которые будут приходить сюда:</b>\n` +
     `1️⃣ <b>Создание:</b> Новый заказ оформлен диспетчером\n` +
-    `2️⃣ <b>Забор у клиента:</b> Курьер забрал изделия (кол-во и список)\n` +
+    `2️⃣ <b>Забор у клиента:</b> Курьер забрал изделия (кол-во и состав)\n` +
     `3️⃣ <b>Готовность:</b> Мойщик замерил, постирал ковры и передал на доставку\n` +
     `4️⃣ <b>Закрытие:</b> Заказ доставлен клиенту и оплачен\n\n` +
     `🕒 <i>Время проверки: ${new Date().toLocaleString('ru-RU')}</i>`;
 
-  return await sendTelegramMessage(token, chatId, testText);
+  return await sendTelegramMessage(cleanToken, cleanChatId, testText);
 }
 
 // Helper to build navigation & call buttons
@@ -218,6 +312,12 @@ export async function notifyOrderCreated(order) {
   }
 
   const orderId = order.id || order.tempId || 'Б/Н';
+
+  // Deduplication check: Do not send creation notification for the same order within 8 seconds
+  if (isDuplicateNotification('created', orderId)) {
+    return { success: true, deduplicated: true };
+  }
+
   const clientName = escapeHtml(order.clientName || 'Новый клиент');
   const phone = escapeHtml(order.phone || order.clientPhone || '-');
   const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
@@ -262,6 +362,12 @@ export async function notifyOrderPickup(order, pickupDetails = {}) {
   }
 
   const orderId = order.id || order.tempId || 'Б/Н';
+
+  // Deduplication check
+  if (isDuplicateNotification('pickup', orderId)) {
+    return { success: true, deduplicated: true };
+  }
+
   const clientName = escapeHtml(order.clientName || 'Клиент');
   const phone = escapeHtml(order.phone || order.clientPhone || '-');
   const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
@@ -299,6 +405,12 @@ export async function notifyOrderReady(order, washDetails = {}) {
   }
 
   const orderId = order.id || order.tempId || 'Б/Н';
+
+  // Deduplication check
+  if (isDuplicateNotification('ready', orderId)) {
+    return { success: true, deduplicated: true };
+  }
+
   const clientName = escapeHtml(order.clientName || 'Клиент');
   const phone = escapeHtml(order.phone || order.clientPhone || '-');
   const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
@@ -336,6 +448,12 @@ export async function notifyOrderCompleted(order, completionDetails = {}) {
   }
 
   const orderId = order.id || order.tempId || 'Б/Н';
+
+  // Deduplication check
+  if (isDuplicateNotification('completed', orderId)) {
+    return { success: true, deduplicated: true };
+  }
+
   const clientName = escapeHtml(order.clientName || 'Клиент');
   const phone = escapeHtml(order.phone || order.clientPhone || '-');
   const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
@@ -386,7 +504,7 @@ export async function sendTelegramOrderCard(order, targetChatId = null) {
   }
 }
 
-// Auto notify on order creation helper (backwards compatibility)
+// Backwards compatibility helper
 export async function autoNotifyOrderToTelegram(order) {
   return await notifyOrderCreated(order);
 }
