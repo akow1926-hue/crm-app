@@ -295,14 +295,14 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
 
   const handleSendTelegram = async () => {
     const config = getTelegramBotConfig();
-    if (!config.botToken) {
-      alert('⚠️ Токен Telegram-бота еще не настроен. Настройте его в разделе "Карта Админа" → "Связи".');
+    if (!config.botToken || !config.channelId) {
+      alert('⚠️ Токен Telegram-бота или Chat ID общей группы не настроены. Настройте их в разделе "Карта Админа".');
       return;
     }
 
     const res = await sendTelegramOrderCard(formData);
     if (res.success) {
-      alert(`✅ Заказ #${formData.id || 'Б/Н'} с кнопками Навигатора успешно отправлен в Telegram бот курьеров!`);
+      alert(`✅ Заказ #${formData.id || 'Б/Н'} успешно отправлен в общую Telegram-группу!`);
     } else {
       alert(`Ошибка отправки в Telegram: ${res.error || 'Проверьте токен бота и Chat ID в Карте Админа'}`);
     }
@@ -348,7 +348,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
           </div>
 
           <div style={{ display: 'flex', gap: '6px' }}>
-            <button type="button" onClick={handleSendTelegram} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }} title="Отправить в Telegram курьерам">
+            <button type="button" onClick={handleSendTelegram} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }} title="Отправить карточку заказа в общую Telegram-группу">
               <Send size={13} />
             </button>
             <button type="button" onClick={() => setIsSMSModalOpen(true)} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(6, 182, 212, 0.15)', color: '#22d3ee', borderColor: 'rgba(6, 182, 212, 0.3)' }} title="СМС Клиенту">

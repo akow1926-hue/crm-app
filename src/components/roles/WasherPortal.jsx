@@ -25,6 +25,7 @@ import {
   Filter
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
+import { notifyOrderReady, getTelegramBotConfig } from '../../services/telegramBotService';
 
 export default function WasherPortal({ orders, setOrders, currentUser, onLogout }) {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'need_measure' | 'cleaning'
@@ -83,7 +84,14 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
         return;
       }
 
-      setOrders(orders.map(o => ((o.id && String(o.id) === String(orderId)) || (o.tempId && o.tempId === orderId)) ? { ...o, status: 'delivery' } : o));
+      const updatedOrder = { ...target, status: 'delivery' };
+      setOrders(orders.map(o => ((o.id && String(o.id) === String(orderId)) || (o.tempId && o.tempId === orderId)) ? updatedOrder : o));
+
+      // Trigger Telegram Group Notification (Case 3: Готовность)
+      notifyOrderReady(updatedOrder, {
+        washer: currentUser?.name || currentUser?.username || 'Мастер цеха'
+      }).catch(err => console.warn('Telegram ready notify error:', err));
+
       alert(`✅ Заказ #${target.id || 'Б/Н'} выстиран, замерен и передан курьеру на доставку!`);
     }
   };
@@ -185,12 +193,14 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
     const finalTotalAmount = itemsFormatted.reduce((sum, it) => sum + (it.total || 0), 0);
     const itemsDetailsStr = itemsFormatted.map(i => i.name).join(' | ');
 
+    let updatedTargetOrder = null;
+
     setOrders(orders.map(o => {
       const isTarget = (o.id && measureModalOrder.id && String(o.id) === String(measureModalOrder.id)) ||
                        (o.tempId && measureModalOrder.tempId && o.tempId === measureModalOrder.tempId) ||
                        (o === measureModalOrder);
       if (isTarget) {
-        return {
+        const updated = {
           ...o,
           status: 'delivery', // Automatically marks as ready for delivery!
           area: parseFloat(totalOrderArea.toFixed(2)),
@@ -198,9 +208,19 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
           items: itemsFormatted,
           notes: (o.notes ? o.notes + ' | ' : '') + `[Замеры в цеху: ${itemsDetailsStr}]`
         };
+        updatedTargetOrder = updated;
+        return updated;
       }
       return o;
     }));
+
+    // Trigger Telegram Group Notification (Case 3: Готовность и замеры ковров)
+    notifyOrderReady(updatedTargetOrder || { ...measureModalOrder, status: 'delivery', area: totalOrderArea, totalAmount: finalTotalAmount, items: itemsFormatted }, {
+      washer: currentUser?.name || currentUser?.username || 'Мастер цеха',
+      measuredItems: itemsFormatted,
+      totalArea: parseFloat(totalOrderArea.toFixed(2)),
+      totalAmount: finalTotalAmount
+    }).catch(err => console.warn('Telegram ready notify error:', err));
 
     alert(`✅ Замеры сохранены (Общая площадь: ${totalOrderArea.toFixed(2)} кв.м, Сумма: ${finalTotalAmount.toLocaleString()} сум)!\nЗаказ #${measureModalOrder.id || 'Б/Н'} переведен в статус «Готов к доставке» и отправлен курьеру.`);
     setMeasureModalOrder(null);
@@ -244,9 +264,23 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
           </div>
         </div>
 
-        <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', color: '#f43f5e', marginLeft: 'auto' }}>
-          <LogOut size={16} /> Выйти
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
+          {getTelegramBotConfig().channelId && (
+            <a 
+              href={getTelegramBotConfig().channelId.startsWith('@') ? `https://t.me/${getTelegramBotConfig().channelId.replace('@', '')}` : (getTelegramBotConfig().botUsername ? `https://t.me/${getTelegramBotConfig().botUsername}` : '#')}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+              title="Открыть общую Telegram-группу заказов"
+            >
+              Telegram Группа
+            </a>
+          )}
+          <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', color: '#f43f5e' }}>
+            <LogOut size={16} /> Выйти
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}

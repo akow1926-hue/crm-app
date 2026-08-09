@@ -65,16 +65,17 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
     }
 
     const config = getTelegramBotConfig();
-    if (!config.botToken) {
-      alert('⚠️ Токен Telegram-бота еще не настроен. Перейдите в меню "Карта Админа" → "Связи" для ввода токена бота.');
+    if (!config.botToken || !config.channelId) {
+      alert('⚠️ Токен Telegram-бота или Chat ID группы еще не настроены. Перейдите в меню "Карта Админа" для настройки бота.');
       return;
     }
 
-    const chatId = config.channelId || '@' + (config.botUsername || 'CosmoCourier_bot');
-    const res = await sendTelegramMessage(config.botToken, chatId, `📢 *СООБЩЕНИЕ ДИСПЕТЧЕРА (${targetCourierTg}):*\n\n${tgMsgText}`);
+    const targetLabel = targetCourierTg === 'all' ? 'Всем сотрудникам' : targetCourierTg;
+    const textHtml = `📢 <b>СООБЩЕНИЕ ДИСПЕТЧЕРА (${targetLabel}):</b>\n\n${tgMsgText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}\n\n🕒 <i>${new Date().toLocaleString('ru-RU')}</i>`;
+    const res = await sendTelegramMessage(config.botToken, config.channelId, textHtml);
 
     if (res.success) {
-      alert(`✅ Сообщение успешно доставлено в Telegram бот/канал курьеров!`);
+      alert(`✅ Сообщение успешно отправлено в общую Telegram-группу!`);
       setIsTgModalOpen(false);
       setTgMsgText('');
     } else {
@@ -82,19 +83,19 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
     }
   };
 
-  // Direct Send Order to Telegram Bot
+  // Direct Send Order to Telegram Group
   const handleSendTelegramCard = async (order) => {
     const config = getTelegramBotConfig();
-    if (!config.botToken) {
-      alert('⚠️ Токен Telegram-бота еще не настроен. Настройте его в "Карта Админа" → "Связи".');
+    if (!config.botToken || !config.channelId) {
+      alert('⚠️ Токен Telegram-бота или Chat ID группы не настроены. Настройте их в "Карта Админа".');
       return;
     }
 
     const res = await sendTelegramOrderCard(order);
     if (res.success) {
-      alert(`✅ Заказ #${order.id} с кнопками навигатора и звонка успешно отправлен курьерам в Telegram!`);
+      alert(`✅ Заказ #${order.id || 'Б/Н'} успешно отправлен в общую Telegram-группу!`);
     } else {
-      alert(`Ошибка отправки: ${res.error || 'Проверьте настройки Telegram Бота'}`);
+      alert(`Ошибка отправки: ${res.error || 'Проверьте настройки Telegram-бота в Карте Админа'}`);
     }
   };
 
@@ -316,7 +317,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
           <div className="glass-card" style={{ width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '800' }}>📢 Сообщение Курьерам в Telegram</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '800' }}>📢 Сообщение в общую Telegram-группу</h3>
               <button onClick={() => setIsTgModalOpen(false)} className="btn-icon"><X size={18}/></button>
             </div>
 
@@ -328,7 +329,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                   onChange={(e) => setTargetCourierTg(e.target.value)}
                   className="select-field"
                 >
-                  <option value="all">📢 Все курьеры (Общий чат)</option>
+                  <option value="all">📢 Всем сотрудникам (В общую группу)</option>
                   {activeCouriers.map(c => (
                     <option key={c.id || c.username} value={c.name || c.username}>
                       {c.name} (@{c.username})
@@ -345,12 +346,12 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                   value={tgMsgText}
                   onChange={(e) => setTgMsgText(e.target.value)}
                   className="textarea-field"
-                  placeholder="Введите важное объявление или данные по срочному забору..."
+                  placeholder="Введите важное объявление или данные по заказу..."
                 />
               </div>
 
               <button type="submit" className="btn btn-primary">
-                <Send size={15} /> Отправить в Telegram Бот
+                <Send size={15} /> Отправить в Telegram-группу
               </button>
             </form>
           </div>

@@ -34,15 +34,17 @@ import {
 } from '../services/googleSheetsService';
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { broadcastDataChange } from '../services/syncEngine';
-import { getTelegramBotConfig, saveTelegramBotConfig, testTelegramBotToken } from '../services/telegramBotService';
+import { getTelegramBotConfig, saveTelegramBotConfig, testTelegramBotToken, testSendGroupMessage } from '../services/telegramBotService';
 
 export default function AdminCardView({ orders, setOrders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
   const [activeSection, setActiveSection] = useState('profile');
 
-  // Telegram Courier Bot Config State
+  // Telegram Common Group Notification Bot Config State
   const [tgBotConfig, setTgBotConfig] = useState(getTelegramBotConfig);
   const [isTestingBotToken, setIsTestingBotToken] = useState(false);
   const [botTestResult, setBotTestResult] = useState(null);
+  const [isSendingTestGroupMsg, setIsSendingTestGroupMsg] = useState(false);
+  const [testGroupMsgResult, setTestGroupMsgResult] = useState(null);
 
   // New Employee Modal State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -1079,17 +1081,19 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
               </div>
             </div>
 
-            {/* Telegram Courier Bot Control & WebApp Settings Card */}
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid rgba(99, 102, 241, 0.4)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%)' }}>
+            {/* Telegram Common Group Notifier Bot Control Card */}
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1.5px solid rgba(99, 102, 241, 0.4)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(15, 23, 42, 0.85) 100%)', borderRadius: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Send size={22} color="#6366f1" />
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Send size={22} color="#818cf8" />
+                  </div>
                   <div>
                     <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>
-                      🤖 Настройка и Управление Telegram-Ботом Курьера
+                      🤖 Управление общим Telegram-ботом (Уведомления в группу)
                     </h3>
                     <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Управляйте токеном бота, подключением API и синхронизацией функций
+                      Один бот-уведомитель присылает все 4 ключевых статуса по заказам в общую Telegram-группу компании
                     </p>
                   </div>
                 </div>
@@ -1101,15 +1105,18 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="input-group">
-                  <label className="input-label">Токен Telegram Бота Курьера (BotFather Token) *</label>
+                  <label className="input-label">Токен Telegram-бота (BotFather API Token) *</label>
                   <input 
                     type="password"
                     placeholder="7890123456:AAEt..." 
-                    value={tgBotConfig.botToken} 
+                    value={tgBotConfig.botToken || ''} 
                     onChange={(e) => setTgBotConfig({ ...tgBotConfig, botToken: e.target.value })}
                     className="input-field" 
                     style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '13px' }}
                   />
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '3px' }}>
+                    Получите токен бота у <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" style={{ color: '#818cf8', textDecoration: 'underline' }}>@BotFather</a> в Telegram
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -1117,27 +1124,15 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                     <label className="input-label">Username Бота (@username)</label>
                     <input 
                       type="text" 
-                      placeholder="CosmoCourier_bot" 
-                      value={tgBotConfig.botUsername} 
+                      placeholder="CosmoGroupNotifier_bot" 
+                      value={tgBotConfig.botUsername || ''} 
                       onChange={(e) => setTgBotConfig({ ...tgBotConfig, botUsername: e.target.value.replace('@', '') })}
                       className="input-field" 
                     />
                   </div>
 
                   <div className="input-group">
-                    <label className="input-label">URL Мобильного WebApp Курьера</label>
-                    <input 
-                      type="text" 
-                      value={tgBotConfig.webAppUrl} 
-                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, webAppUrl: e.target.value })}
-                      className="input-field" 
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="input-group">
-                    <label className="input-label">Chat ID группы / канала курьеров</label>
+                    <label className="input-label">Chat ID общей группы Telegram *</label>
                     <input 
                       type="text" 
                       placeholder="-1001234567890 или @group_name" 
@@ -1146,21 +1141,69 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                       className="input-field" 
                     />
                   </div>
+                </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '22px' }}>
-                    <input 
-                      type="checkbox" 
-                      id="autoNotifyCouriers"
-                      checked={tgBotConfig.autoNotifyCouriers !== false}
-                      onChange={(e) => setTgBotConfig({ ...tgBotConfig, autoNotifyCouriers: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <label htmlFor="autoNotifyCouriers" style={{ fontSize: '12px', color: '#fff', cursor: 'pointer', fontWeight: '600' }}>
-                      Авто-отправка новых заказов в Telegram
+                {/* 4 Event Toggles */}
+                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0', marginBottom: '8px' }}>
+                    📢 4 Ключевых случая отправки уведомлений в общую группу:
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#cbd5e1', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={tgBotConfig.enabledEvents?.created !== false}
+                        onChange={(e) => setTgBotConfig({
+                          ...tgBotConfig,
+                          enabledEvents: { ...tgBotConfig.enabledEvents, created: e.target.checked }
+                        })}
+                        style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      />
+                      <span>📥 <b>1. Создание:</b> Новый заказ диспетчера</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#cbd5e1', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={tgBotConfig.enabledEvents?.pickup !== false}
+                        onChange={(e) => setTgBotConfig({
+                          ...tgBotConfig,
+                          enabledEvents: { ...tgBotConfig.enabledEvents, pickup: e.target.checked }
+                        })}
+                        style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      />
+                      <span>🚗 <b>2. Забор у клиента:</b> Курьер забрал (кол-во)</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#cbd5e1', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={tgBotConfig.enabledEvents?.ready !== false}
+                        onChange={(e) => setTgBotConfig({
+                          ...tgBotConfig,
+                          enabledEvents: { ...tgBotConfig.enabledEvents, ready: e.target.checked }
+                        })}
+                        style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      />
+                      <span>🧼 <b>3. Готовность:</b> Замеры & мойка в цеху</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', color: '#cbd5e1', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={tgBotConfig.enabledEvents?.done !== false}
+                        onChange={(e) => setTgBotConfig({
+                          ...tgBotConfig,
+                          enabledEvents: { ...tgBotConfig.enabledEvents, done: e.target.checked }
+                        })}
+                        style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      />
+                      <span>✅ <b>4. Закрытие:</b> Доставка & оплата заказа</span>
                     </label>
                   </div>
                 </div>
 
+                {/* Test Bot Token Result Alert */}
                 {botTestResult && (
                   <div style={{ 
                     padding: '10px 12px', 
@@ -1180,6 +1223,25 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                   </div>
                 )}
 
+                {/* Test Send Group Message Alert */}
+                {testGroupMsgResult && (
+                  <div style={{ 
+                    padding: '10px 12px', 
+                    borderRadius: 'var(--radius-sm)', 
+                    fontSize: '12px', 
+                    background: testGroupMsgResult.success ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                    border: `1px solid ${testGroupMsgResult.success ? '#10b981' : '#f43f5e'}`
+                  }}>
+                    {testGroupMsgResult.success ? (
+                      <div>
+                        🚀 <strong>Тестовое сообщение успешно отправлено в общую Telegram-группу!</strong> Проверьте группу в Telegram.
+                      </div>
+                    ) : (
+                      <div>❌ <strong>Ошибка отправки в группу:</strong> {testGroupMsgResult.error}<br /><small>Убедитесь, что бот добавлен в группу и назначен администратором.</small></div>
+                    )}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                   <button 
                     type="button"
@@ -1189,41 +1251,54 @@ export default function AdminCardView({ orders, setOrders, clients, currentUser,
                         return;
                       }
                       setIsTestingBotToken(true);
+                      setBotTestResult(null);
                       const res = await testTelegramBotToken(tgBotConfig.botToken);
                       setIsTestingBotToken(false);
                       setBotTestResult(res);
                     }}
                     className="btn btn-secondary"
-                    style={{ flex: 1, fontSize: '12px' }}
+                    style={{ flex: 1, minWidth: '150px', fontSize: '12px' }}
                   >
                     <RefreshCw size={14} className={isTestingBotToken ? 'animate-spin' : ''} /> 
-                    {isTestingBotToken ? 'Проверка...' : '⚡ Проверить Токен API'}
+                    {isTestingBotToken ? 'Проверка API...' : '⚡ Проверить Токен API'}
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      if (!tgBotConfig.botToken || !tgBotConfig.channelId) {
+                        alert('Укажите токен бота и Chat ID общей группы!');
+                        return;
+                      }
+                      setIsSendingTestGroupMsg(true);
+                      setTestGroupMsgResult(null);
+                      const res = await testSendGroupMessage(tgBotConfig.botToken, tgBotConfig.channelId);
+                      setIsSendingTestGroupMsg(false);
+                      setTestGroupMsgResult(res);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, minWidth: '180px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                  >
+                    <Send size={14} className={isSendingTestGroupMsg ? 'animate-spin' : ''} />
+                    {isSendingTestGroupMsg ? 'Отправка...' : '💬 Отправить тест в группу'}
                   </button>
 
                   <button 
                     type="button"
                     onClick={() => {
                       saveTelegramBotConfig(tgBotConfig);
-                      alert('✅ Настройки и токен Telegram Бота Курьера успешно сохранены в CRM!');
+                      alert('✅ Настройки общего Telegram-бота уведомлений успешно сохранены в CRM!');
                     }}
                     className="btn btn-primary"
-                    style={{ flex: 1, fontSize: '12px' }}
+                    style={{ flex: 1, minWidth: '160px', fontSize: '12px' }}
                   >
-                    <CheckCircle size={14} /> Сохранить Токен Бота
+                    <CheckCircle size={14} /> Сохранить Настройки
                   </button>
                 </div>
 
-                {tgBotConfig.botUsername && (
-                  <a 
-                    href={`https://t.me/${tgBotConfig.botUsername}?start=courier`} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="btn btn-secondary"
-                    style={{ fontSize: '12px', justifyContent: 'center', background: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366f1' }}
-                  >
-                    <ExternalLink size={14} /> 📲 Ссылка на Telegram Бота для Курьеров (https://t.me/{tgBotConfig.botUsername})
-                  </a>
-                )}
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: '8px', border: '1px dashed var(--border-color)' }}>
+                  💡 <b>Инструкция по подключению:</b> 1. Создайте бота в @BotFather → 2. Создайте общую группу в Telegram и добавьте туда бота → 3. Сделайте бота администратором группы → 4. Укажите Chat ID группы (например: <code>-1001234567890</code>) и нажмите «Отправить тест в группу».
+                </div>
               </div>
             </div>
           </div>

@@ -1,57 +1,79 @@
-// Telegram Courier Bot Management & Interactive Notification Service
+// Telegram Common Group Notification Bot Service for Cosmo Cleaning CRM
+// Sends automated notifications for 4 primary events to the unified Telegram Group:
+// 1. New Order Created (Диспетчер оформляет новый заказ)
+// 2. Order Picked Up (Курьер забрал изделия у клиента и указал количество)
+// 3. Order Measured & Washed (Мойщик замерил ковры и завершил работу в цеху)
+// 4. Order Delivered & Closed (Курьер доставил заказ, принята оплата, заказ закрыт)
 
-const STORAGE_KEY = 'cosmo_crm_tg_courier_bot_config';
+const STORAGE_KEY = 'cosmo_crm_tg_group_bot_config';
+const LEGACY_STORAGE_KEY = 'cosmo_crm_tg_courier_bot_config';
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 export function getTelegramBotConfig() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : {
-      botToken: '',
-      botUsername: 'CosmoCourier_bot',
-      channelId: '', // Telegram Group / Channel Chat ID (e.g. -100123456789 or @channel)
-      webAppUrl: typeof window !== 'undefined' ? window.location.origin : '',
-      autoNotifyCouriers: true,
-      status: 'offline'
-    };
+    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        botToken: parsed.botToken || '',
+        botUsername: parsed.botUsername || 'CosmoCourier_bot',
+        channelId: parsed.channelId || '', // Common Telegram Group Chat ID (e.g. -1001234567890 or @group)
+        enabledEvents: {
+          created: parsed.enabledEvents?.created ?? true,
+          pickup: parsed.enabledEvents?.pickup ?? true,
+          ready: parsed.enabledEvents?.ready ?? true,
+          done: parsed.enabledEvents?.done ?? true
+        },
+        status: parsed.status || 'offline'
+      };
+    }
   } catch (e) {
-    return {
-      botToken: '',
-      botUsername: 'CosmoCourier_bot',
-      channelId: '',
-      webAppUrl: typeof window !== 'undefined' ? window.location.origin : '',
-      autoNotifyCouriers: true,
-      status: 'offline'
-    };
+    console.error('Error reading telegram bot config:', e);
   }
+
+  return {
+    botToken: '',
+    botUsername: 'CosmoGroupNotifier_bot',
+    channelId: '',
+    enabledEvents: {
+      created: true,
+      pickup: true,
+      ready: true,
+      done: true
+    },
+    status: 'offline'
+  };
 }
 
 export function saveTelegramBotConfig(config) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: config }));
-    
-    // Automatically register Telegram Webhook to Vercel Serverless Function if token is provided
-    if (config.botToken && typeof window !== 'undefined') {
-      registerVercelWebhook(config.botToken);
-    }
+    const payload = {
+      botToken: (config.botToken || '').trim(),
+      botUsername: (config.botUsername || '').trim().replace(/^@/, ''),
+      channelId: (config.channelId || '').trim(),
+      enabledEvents: {
+        created: config.enabledEvents?.created !== false,
+        pickup: config.enabledEvents?.pickup !== false,
+        ready: config.enabledEvents?.ready !== false,
+        done: config.enabledEvents?.done !== false
+      },
+      status: config.botToken && config.channelId ? 'online' : 'offline'
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: payload }));
     return true;
   } catch (e) {
-    console.error('Error saving bot config:', e);
+    console.error('Error saving telegram bot config:', e);
     return false;
-  }
-}
-
-// Automatically register Telegram Webhook on Vercel
-export async function registerVercelWebhook(token) {
-  if (!token) return { success: false, error: 'Токен не указан' };
-
-  try {
-    const webhookUrl = `${window.location.origin}/api/telegram-bot?token=${token.trim()}`;
-    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
-    const data = await res.json();
-    return { success: data.ok, description: data.description || 'Webhook зарегистрирован на Vercel' };
-  } catch (e) {
-    return { success: false, error: e.message };
   }
 }
 
@@ -65,10 +87,6 @@ export async function testTelegramBotToken(token) {
     const data = await res.json();
 
     if (data.ok) {
-      if (typeof window !== 'undefined') {
-        await registerVercelWebhook(cleanToken);
-      }
-
       return {
         success: true,
         botInfo: {
@@ -86,15 +104,18 @@ export async function testTelegramBotToken(token) {
   }
 }
 
-// Send Raw Telegram Message with optional Inline Keyboard
-export async function sendTelegramMessage(token, chatId, text, replyMarkup = null, parseMode = 'Markdown') {
-  if (!token || !chatId) return { success: false, error: 'Нет токена или Chat ID' };
+// Send Raw Telegram Message with optional Inline Keyboard and HTML parse mode
+export async function sendTelegramMessage(token, chatId, htmlText, replyMarkup = null, parseMode = 'HTML') {
+  if (!token || !chatId) {
+    return { success: false, error: 'Не указан токен бота или Chat ID общей группы' };
+  }
 
   try {
     const payload = {
-      chat_id: chatId,
-      text: text,
-      parse_mode: parseMode
+      chat_id: chatId.trim(),
+      text: htmlText,
+      parse_mode: parseMode,
+      disable_web_page_preview: true
     };
     if (replyMarkup) {
       payload.reply_markup = replyMarkup;
@@ -108,54 +129,34 @@ export async function sendTelegramMessage(token, chatId, text, replyMarkup = nul
     const data = await res.json();
     return { success: data.ok, data: data.result, error: data.description };
   } catch (err) {
-    console.error('Error sending Telegram message:', err);
+    console.error('Error sending Telegram group message:', err);
     return { success: false, error: err.message };
   }
 }
 
-/**
- * Generate formatted Telegram order text and inline buttons with navigation & actions
- */
-export function buildTelegramOrderMessage(order, options = {}) {
-  const orderId = order.id || order.tempId || 'Б/Н';
-  const statusLabel = 
-    order.status === 'new' ? '📥 Новый (Ожидает забора)' :
-    order.status === 'pickup' ? '🚗 Забор курьером' :
-    order.status === 'cleaning' ? '🧼 В цеху (Стирка/Сушка)' :
-    order.status === 'ready' ? '📦 Готов к выдаче' :
-    order.status === 'delivery' ? '🚚 На доставке' :
-    order.status === 'done' ? '✅ Выполнен' : order.status || 'В обработке';
+// Send Test Message to Group
+export async function testSendGroupMessage(token, chatId) {
+  if (!token) return { success: false, error: 'Введите токен бота' };
+  if (!chatId) return { success: false, error: 'Введите Chat ID общей группы' };
 
-  const paymentLabel = 
-    order.paymentStatus === 'paid' ? '✅ Оплачено' :
-    order.paymentStatus === 'partial' ? '⚠️ Частичная оплата' : '⏳ Не оплачено';
+  const testText = 
+    `🤖 <b>COSMO CLEANING — ТЕСТОВОЕ СООБЩЕНИЕ</b>\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `✅ Бот-уведомитель успешно подключен к общей Telegram-группе!\n\n` +
+    `📢 <b>Автоматические статусы, которые будут приходить сюда:</b>\n` +
+    `1️⃣ <b>Создание:</b> Новый заказ оформлен диспетчером\n` +
+    `2️⃣ <b>Забор у клиента:</b> Курьер забрал изделия (кол-во и список)\n` +
+    `3️⃣ <b>Готовность:</b> Мойщик замерил, постирал ковры и передал на доставку\n` +
+    `4️⃣ <b>Закрытие:</b> Заказ доставлен клиенту и оплачен\n\n` +
+    `🕒 <i>Время проверки: ${new Date().toLocaleString('ru-RU')}</i>`;
 
-  const sumFormatted = (order.totalAmount || order.agreedAmount || 0).toLocaleString();
-  const addressFull = `${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`;
-  
-  // Format items list if available
-  let itemsSummary = '';
-  if (Array.isArray(order.items) && order.items.length > 0) {
-    itemsSummary = order.items.map((it, idx) => `${idx + 1}. ${it.name || it.serviceName || 'Ковер'}: ${it.qty || 1} ${it.unit || 'м²'}`).join('\n');
-  } else {
-    itemsSummary = `Количество: ${order.itemsCount || 1} шт / ${order.area ? `${order.area} м²` : ''}`;
-  }
+  return await sendTelegramMessage(token, chatId, testText);
+}
 
-  const text = `✨ *COSMO CLEANING — ЗАКАЗ #${orderId}*\n\n` +
-    `👤 *Клиент:* ${order.clientName || 'Новый клиент'}\n` +
-    `📞 *Телефон:* \`${order.phone || order.clientPhone || '-'}\`\n` +
-    `📍 *Адрес:* ${addressFull}\n` +
-    (order.landmark ? `🗺️ *Ориентир:* ${order.landmark}\n` : '') +
-    (order.language ? `🗣️ *Язык клиента:* ${order.language}\n` : '') +
-    `📦 *Изделия:*\n${itemsSummary}\n` +
-    `💰 *Сумма:* *${sumFormatted} сум* (${paymentLabel})\n` +
-    `📊 *Статус:* ${statusLabel}\n` +
-    (order.assignedCourier ? `🚚 *Курьер:* ${order.assignedCourier}\n` : '') +
-    (order.notes ? `💬 *Примечание:* _${order.notes}_\n` : '') +
-    `\n🕒 *Дата:* ${order.createdDate || new Date().toLocaleString('ru-RU')}`;
-
-  // Build Interactive Inline Buttons
+// Helper to build navigation & call buttons
+function buildOrderActionButtons(order) {
   const inlineKeyboard = [];
+  const orderId = order.id || order.tempId || '';
 
   // Row 1: Navigation Buttons
   const navButtons = [];
@@ -169,10 +170,10 @@ export function buildTelegramOrderMessage(order, options = {}) {
       text: '🗺️ Яндекс.Карта',
       url: `https://yandex.ru/maps/?rtext=~${lat},${lng}&rtt=auto`
     });
-  } else {
-    const encodedAddr = encodeURIComponent(`Самарканд ${order.district || ''} ${order.address || ''}`);
+  } else if (order.address) {
+    const encodedAddr = encodeURIComponent(`Самарканд ${order.district ? order.district + ' ' : ''}${order.address}`);
     navButtons.push({
-      text: '🧭 Навигатор по адресу',
+      text: '🧭 Я.Навигатор по адресу',
       url: `https://yandex.ru/navi/?text=${encodedAddr}`
     });
   }
@@ -180,69 +181,212 @@ export function buildTelegramOrderMessage(order, options = {}) {
     inlineKeyboard.push(navButtons);
   }
 
-  // Row 2: Direct Phone Call & Chat
+  // Row 2: Phone call link
   const phoneClean = String(order.phone || order.clientPhone || '').replace(/[^0-9]/g, '');
-  const commButtons = [];
   if (phoneClean) {
-    commButtons.push({
-      text: '📞 Позвонить',
+    inlineKeyboard.push([{
+      text: `📞 Позвонить (${order.phone || order.clientPhone})`,
       url: `https://t.me/share/url?url=${encodeURIComponent(`Заказ #${orderId}`)}&text=${encodeURIComponent(`tel:+${phoneClean}`)}`
-    });
+    }]);
   }
 
-  // Row 3: Status Quick Update Actions
-  const actionButtons = [];
-  if (order.status === 'new' || order.status === 'pickup') {
-    actionButtons.push({
-      text: '🚗 Забрать у клиента',
-      callback_data: `cour_claim_${orderId}`
-    });
-  } else if (order.status === 'cleaning' || order.status === 'ready') {
-    actionButtons.push({
-      text: '🚚 Взять на доставку',
-      callback_data: `cour_ready_${orderId}`
-    });
-  } else if (order.status === 'delivery') {
-    actionButtons.push({
-      text: '✅ Доставлен (Оплачен)',
-      callback_data: `cour_pay_cash_${orderId}`
-    });
-  }
-  if (actionButtons.length > 0) {
-    inlineKeyboard.push(actionButtons);
-  }
-
-  return {
-    text,
-    replyMarkup: { inline_keyboard: inlineKeyboard }
-  };
+  return inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : null;
 }
 
-/**
- * Send an interactive Order Card to Telegram
- */
+// Helper to format items summary string
+function formatItemsList(items, fallbackCount, fallbackArea) {
+  if (Array.isArray(items) && items.length > 0) {
+    return items.map((it, idx) => {
+      const name = it.serviceName || it.name || 'Изделие';
+      const qty = it.qty || 1;
+      const unit = it.unit || 'шт';
+      const dims = it.width && it.length ? ` (${it.width}м × ${it.length}м = ${it.area || (it.width * it.length).toFixed(2)} м²)` : '';
+      const price = it.price ? ` — ${it.price.toLocaleString()} сум` : '';
+      return `• <b>${idx + 1}. ${escapeHtml(name)}</b>: ${qty} ${unit}${dims}${price}`;
+    }).join('\n');
+  }
+  return `• <b>Количество:</b> ${fallbackCount || 1} шт ${fallbackArea ? `(${fallbackArea} м²)` : ''}`;
+}
+
+// ============================================================================
+// EVENT 1: Создание нового заказа (Диспетчер оформляет новый заказ)
+// ============================================================================
+export async function notifyOrderCreated(order) {
+  const config = getTelegramBotConfig();
+  if (!config.botToken || !config.channelId || config.enabledEvents.created === false) {
+    return { success: false, skipped: true };
+  }
+
+  const orderId = order.id || order.tempId || 'Б/Н';
+  const clientName = escapeHtml(order.clientName || 'Новый клиент');
+  const phone = escapeHtml(order.phone || order.clientPhone || '-');
+  const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
+  const landmark = order.landmark ? escapeHtml(order.landmark) : '';
+  const language = order.language ? escapeHtml(order.language) : '';
+  const itemsText = formatItemsList(order.items, order.itemsCount, order.area);
+  const courier = order.assignedCourier ? escapeHtml(order.assignedCourier) : 'Не назначен';
+  const dispatcher = order.dispatcherName ? escapeHtml(order.dispatcherName) : 'Диспетчер CRM';
+  const notes = order.notes ? escapeHtml(order.notes) : '';
+  const isUrgent = order.urgent ? '🔥 <b>СРОЧНЫЙ ЗАКАЗ</b>\n' : '';
+  const sumFormatted = (order.totalAmount || order.agreedAmount || 0).toLocaleString();
+
+  const text = 
+    `🆕 <b>НОВЫЙ ЗАКАЗ #${orderId}</b>\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    isUrgent +
+    `👤 <b>Клиент:</b> ${clientName}\n` +
+    `📞 <b>Телефон:</b> <code>${phone}</code>\n` +
+    `📍 <b>Адрес:</b> ${addressFull}\n` +
+    (landmark ? `🗺️ <b>Ориентир:</b> ${landmark}\n` : '') +
+    (language ? `🗣️ <b>Язык общения:</b> ${language}\n` : '') +
+    `📦 <b>Изделия на забор:</b>\n${itemsText}\n` +
+    `🚚 <b>Назначенный курьер:</b> ${courier}\n` +
+    `🎙️ <b>Оформил(а):</b> ${dispatcher}\n` +
+    (order.totalAmount ? `💰 <b>Ориентировочная сумма:</b> ${sumFormatted} сум\n` : '') +
+    (notes ? `💬 <b>Примечание:</b> <i>${notes}</i>\n` : '') +
+    `🕒 <b>Время создания:</b> ${order.createdDate || new Date().toLocaleString('ru-RU')}\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `📥 <i>Заказ ожидает выезда курьера на забор изделий.</i>`;
+
+  const replyMarkup = buildOrderActionButtons(order);
+  return await sendTelegramMessage(config.botToken, config.channelId, text, replyMarkup);
+}
+
+// ============================================================================
+// EVENT 2: Забор у клиента (Курьер приезжает на адрес, отмечает в CRM, что конкретно забрал)
+// ============================================================================
+export async function notifyOrderPickup(order, pickupDetails = {}) {
+  const config = getTelegramBotConfig();
+  if (!config.botToken || !config.channelId || config.enabledEvents.pickup === false) {
+    return { success: false, skipped: true };
+  }
+
+  const orderId = order.id || order.tempId || 'Б/Н';
+  const clientName = escapeHtml(order.clientName || 'Клиент');
+  const phone = escapeHtml(order.phone || order.clientPhone || '-');
+  const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
+  const courier = escapeHtml(pickupDetails.courier || order.assignedCourier || 'Курьер');
+  const itemsText = formatItemsList(pickupDetails.items || order.items, order.itemsCount, order.area);
+  const conditionNotes = pickupDetails.notes ? escapeHtml(pickupDetails.notes) : '';
+  const negotiatedNotes = pickupDetails.negotiated ? escapeHtml(pickupDetails.negotiated) : '';
+  const timeStr = new Date().toLocaleString('ru-RU');
+
+  const text = 
+    `🚗 <b>ЗАКАЗ #${orderId} — ЗАБРАН У КЛИЕНТА</b>\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `👤 <b>Клиент:</b> ${clientName}\n` +
+    `📞 <b>Телефон:</b> <code>${phone}</code>\n` +
+    `📍 <b>Адрес:</b> ${addressFull}\n` +
+    `🚚 <b>Курьер:</b> <b>${courier}</b>\n\n` +
+    `📦 <b>Принятые изделия:</b>\n${itemsText}\n\n` +
+    (conditionNotes ? `📝 <b>Состояние / Дефекты:</b> <i>${conditionNotes}</i>\n` : '') +
+    (negotiatedNotes ? `💬 <b>Договоренность с клиентом:</b> <i>${negotiatedNotes}</i>\n` : '') +
+    `🕒 <b>Время забора:</b> ${timeStr}\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `🏭 <i>Изделия приняты курьером и направляются в цех стирки.</i>`;
+
+  const replyMarkup = buildOrderActionButtons(order);
+  return await sendTelegramMessage(config.botToken, config.channelId, text, replyMarkup);
+}
+
+// ============================================================================
+// EVENT 3: Готовность (Мойщик измеряет ковры и заканчивает работу — нужно доставить)
+// ============================================================================
+export async function notifyOrderReady(order, washDetails = {}) {
+  const config = getTelegramBotConfig();
+  if (!config.botToken || !config.channelId || config.enabledEvents.ready === false) {
+    return { success: false, skipped: true };
+  }
+
+  const orderId = order.id || order.tempId || 'Б/Н';
+  const clientName = escapeHtml(order.clientName || 'Клиент');
+  const phone = escapeHtml(order.phone || order.clientPhone || '-');
+  const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
+  const washer = escapeHtml(washDetails.washer || 'Мастер цеха');
+  const totalArea = washDetails.totalArea || order.area || 0;
+  const totalAmount = (washDetails.totalAmount || order.totalAmount || order.agreedAmount || 0).toLocaleString();
+  const itemsText = formatItemsList(washDetails.measuredItems || order.items, order.itemsCount, totalArea);
+  const timeStr = new Date().toLocaleString('ru-RU');
+
+  const text = 
+    `🧼📦 <b>ЗАКАЗ #${orderId} — ИЗМЕРЕН И ПОМЫТ</b>\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `👤 <b>Клиент:</b> ${clientName}\n` +
+    `📞 <b>Телефон:</b> <code>${phone}</code>\n` +
+    `📍 <b>Адрес:</b> ${addressFull}\n` +
+    `🧼 <b>Мастер цеха:</b> <b>${washer}</b>\n\n` +
+    `📐 <b>Результаты замеров в цеху:</b>\n${itemsText}\n\n` +
+    (totalArea > 0 ? `📏 <b>Общая площадь:</b> <b>${totalArea} м²</b>\n` : '') +
+    `💰 <b>Итоговая сумма к оплате:</b> <b>${totalAmount} сум</b>\n` +
+    `🕒 <b>Время готовности:</b> ${timeStr}\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `🚚 <b>ВНИМАНИЕ КУРЬЕРАМ:</b> <i>Заказ готов к выгрузке и ожидает доставки клиенту!</i>`;
+
+  const replyMarkup = buildOrderActionButtons(order);
+  return await sendTelegramMessage(config.botToken, config.channelId, text, replyMarkup);
+}
+
+// ============================================================================
+// EVENT 4: Закрытие (Курьер доставил вещи, и заказ закрывается на сайте)
+// ============================================================================
+export async function notifyOrderCompleted(order, completionDetails = {}) {
+  const config = getTelegramBotConfig();
+  if (!config.botToken || !config.channelId || config.enabledEvents.done === false) {
+    return { success: false, skipped: true };
+  }
+
+  const orderId = order.id || order.tempId || 'Б/Н';
+  const clientName = escapeHtml(order.clientName || 'Клиент');
+  const phone = escapeHtml(order.phone || order.clientPhone || '-');
+  const addressFull = escapeHtml(`${order.district ? `р-н ${order.district}, ` : ''}${order.address || 'Самарканд'}`);
+  const courier = escapeHtml(completionDetails.courier || order.assignedCourier || 'Курьер');
+  const totalAmount = (order.totalAmount || order.agreedAmount || 0).toLocaleString();
+  const paidAmount = (completionDetails.paidAmount || order.paidAmount || order.totalAmount || 0).toLocaleString();
+  const paymentType = escapeHtml(completionDetails.paymentType || order.paymentType || 'Наличные');
+  const timeStr = new Date().toLocaleString('ru-RU');
+
+  const text = 
+    `✅ <b>ЗАКАЗ #${orderId} — УСПЕШНО ДОСТАВЛЕН И ЗАКРЫТ</b>\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `👤 <b>Клиент:</b> ${clientName}\n` +
+    `📞 <b>Телефон:</b> <code>${phone}</code>\n` +
+    `📍 <b>Адрес:</b> ${addressFull}\n` +
+    `🚚 <b>Курьер доставки:</b> <b>${courier}</b>\n\n` +
+    `💰 <b>Сумма заказа:</b> <b>${totalAmount} сум</b>\n` +
+    `💵 <b>Полученная оплата:</b> <b>${paidAmount} сум</b>\n` +
+    `💳 <b>Способ оплаты:</b> <b>${paymentType}</b>\n` +
+    (completionDetails.underpaidReason && completionDetails.underpaidReason !== '-' ? `⚠️ <b>Примечание по оплате:</b> <i>${escapeHtml(completionDetails.underpaidReason)}</i>\n` : '') +
+    `🕒 <b>Время закрытия:</b> ${timeStr}\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `🎉 <i>Заказ полностью выполнен, оплата принята, электронный чек закрыт в CRM!</i>`;
+
+  return await sendTelegramMessage(config.botToken, config.channelId, text);
+}
+
+// Manual send order card helper
 export async function sendTelegramOrderCard(order, targetChatId = null) {
   const config = getTelegramBotConfig();
   if (!config.botToken) {
-    return { success: false, error: 'Токен Telegram Бота не настроен в CRM (раздел "Карта Админа")' };
+    return { success: false, error: 'Токен Telegram-бота не настроен в CRM (раздел "Карта Админа")' };
   }
 
   const chatId = targetChatId || config.channelId;
   if (!chatId) {
-    return { success: false, error: 'Chat ID или канал курьеров не указан' };
+    return { success: false, error: 'Chat ID общей Telegram-группы не указан' };
   }
 
-  const { text, replyMarkup } = buildTelegramOrderMessage(order);
-  return await sendTelegramMessage(config.botToken, chatId, text, replyMarkup);
+  if (order.status === 'done') {
+    return await notifyOrderCompleted(order);
+  } else if (order.status === 'delivery' || order.status === 'ready') {
+    return await notifyOrderReady(order);
+  } else if (order.status === 'cleaning' || order.status === 'pickup') {
+    return await notifyOrderPickup(order);
+  } else {
+    return await notifyOrderCreated(order);
+  }
 }
 
-/**
- * Auto notify couriers on new order creation
- */
+// Auto notify on order creation helper (backwards compatibility)
 export async function autoNotifyOrderToTelegram(order) {
-  const config = getTelegramBotConfig();
-  if (!config.botToken || !config.autoNotifyCouriers || !config.channelId) {
-    return false;
-  }
-  return await sendTelegramOrderCard(order, config.channelId);
+  return await notifyOrderCreated(order);
 }

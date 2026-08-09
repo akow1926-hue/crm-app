@@ -38,7 +38,7 @@ import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendSMSNotification } from '../../services/smsService';
-import { getTelegramBotConfig } from '../../services/telegramBotService';
+import { getTelegramBotConfig, notifyOrderPickup, notifyOrderCompleted, notifyOrderCreated } from '../../services/telegramBotService';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -383,13 +383,15 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       assignedId = getNextSequentialId();
     }
 
+    let updatedTargetOrder = null;
+
     setOrders(orders.map(o => {
       const isTarget = (o.id && pickupModalOrder.id && o.id === pickupModalOrder.id) ||
                        (o.tempId && pickupModalOrder.tempId && o.tempId === pickupModalOrder.tempId) ||
                        (o === pickupModalOrder) ||
                        (!o.id && o.clientName === pickupModalOrder.clientName && o.createdDate === pickupModalOrder.createdDate);
       if (isTarget) {
-        return {
+        const updated = {
           ...o,
           id: assignedId,
           status: 'cleaning',
@@ -399,9 +401,19 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           gpsLocation: gpsLocation || o.gpsLocation || '',
           notes: (o.notes ? o.notes + ' | ' : '') + customNote
         };
+        updatedTargetOrder = updated;
+        return updated;
       }
       return o;
     }));
+
+    // Trigger Telegram Group Notification (Case 2: Забор у клиента)
+    notifyOrderPickup(updatedTargetOrder || { ...pickupModalOrder, id: assignedId, items: itemsFormatted }, {
+      courier: courierName,
+      items: itemsFormatted,
+      notes: pickupConditionNotes,
+      negotiated: negotiatedNotes
+    }).catch(err => console.warn('Telegram pickup notify error:', err));
 
     alert(`Заказ принято у клиента! Выдан официальный номер заказа: #${assignedId}. Состав: ${itemsSummaryStr}. Передан в цех.`);
     setPickupModalOrder(null);
@@ -426,19 +438,32 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       return;
     }
 
+    const payTypeLabel = paymentType === 'cash' ? 'Наличные' : paymentType === 'click' ? 'Click' : 'Payme';
+    let updatedCompletedOrder = null;
+
     setOrders(orders.map(o => {
       if (o.id === deliveryModalOrder.id) {
-        return {
+        const updated = {
           ...o,
           status: 'done',
           paymentStatus: paidAmount >= expectedSum ? 'paid' : 'partial',
           paidAmount: paidAmount,
-          paymentType: paymentType === 'cash' ? 'Наличные' : paymentType === 'click' ? 'Click' : 'Payme',
+          paymentType: payTypeLabel,
           underpaidReason: underpaidReason || '-'
         };
+        updatedCompletedOrder = updated;
+        return updated;
       }
       return o;
     }));
+
+    // Trigger Telegram Group Notification (Case 4: Закрытие заказа)
+    notifyOrderCompleted(updatedCompletedOrder || { ...deliveryModalOrder, status: 'done', paidAmount, paymentType: payTypeLabel }, {
+      courier: courierName,
+      paidAmount: paidAmount,
+      paymentType: payTypeLabel,
+      underpaidReason: underpaidReason
+    }).catch(err => console.warn('Telegram completed notify error:', err));
 
     alert(`Заказ #${deliveryModalOrder.id} доставлен клиенту! Электронный чек сформирован.`);
     setDeliveryModalOrder(null);
@@ -529,6 +554,15 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     };
 
     setOrders([newOrderObj, ...orders]);
+
+    // Trigger Telegram Group Notifications: Case 1 (Creation) and Case 2 (Pickup)
+    notifyOrderCreated(newOrderObj).catch(err => console.warn('Telegram create notify error:', err));
+    notifyOrderPickup(newOrderObj, {
+      courier: courierName,
+      items: formattedItems,
+      notes: streetOrder.notes || 'Заказ принят курьером с улицы'
+    }).catch(err => console.warn('Telegram pickup notify error:', err));
+
     alert(`Новый заказ с улицы #${newId} зарегистрирован и передан в цех!`);
     setActiveSubTab('pickups');
   };
@@ -578,16 +612,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {getTelegramBotConfig().botUsername && (
+          {getTelegramBotConfig().channelId && (
             <a 
-              href={`https://t.me/${getTelegramBotConfig().botUsername}?start=courier`}
+              href={getTelegramBotConfig().channelId.startsWith('@') ? `https://t.me/${getTelegramBotConfig().channelId.replace('@', '')}` : (getTelegramBotConfig().botUsername ? `https://t.me/${getTelegramBotConfig().botUsername}` : '#')}
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"
               style={{ fontSize: '12px', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.4)', padding: '8px 12px', borderRadius: '10px' }}
-              title="Открыть рабочего бота курьеров в Telegram"
+              title="Открыть общую Telegram-группу заказов"
             >
-              <Send size={14} /> Telegram Бот
+              <Send size={14} /> Telegram Группа
             </a>
           )}
           <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', color: '#f43f5e', padding: '8px 14px', borderRadius: '10px' }}>

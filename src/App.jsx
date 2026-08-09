@@ -34,6 +34,12 @@ import {
   notifyAdminPayment 
 } from './services/notificationService';
 import { 
+  notifyOrderCreated, 
+  notifyOrderPickup, 
+  notifyOrderReady, 
+  notifyOrderCompleted 
+} from './services/telegramBotService';
+import { 
   getSupabaseOrders, 
   saveSupabaseOrder, 
   deleteSupabaseOrder, 
@@ -374,18 +380,24 @@ export default function App() {
       setOrders([savedOrder, ...orders]);
       const orderLabel = savedOrder.id ? `заказ #${savedOrder.id}` : `заявку (${savedOrder.clientName})`;
       setLogs([{ id: Date.now(), text: `Создана новая ${orderLabel}`, time: 'Только что', type: 'system' }, ...logs]);
-      // Push notification to Courier
+      // Push notification to Courier & Telegram Group (Case 1: Создание)
       notifyCourierNewOrder(savedOrder);
+      notifyOrderCreated(savedOrder).catch(err => console.warn('Telegram create notify error:', err));
     }
 
     // Direct save to Supabase Postgres DB
     saveSupabaseOrder(savedOrder);
 
-    // Status change push notifications
-    if (prevStatus !== savedOrder.status) {
+    // Status change push notifications & Telegram Group notifications
+    if (prevStatus && prevStatus !== savedOrder.status) {
       notifyDispatcherStatusChange(savedOrder, savedOrder.status);
-      if (savedOrder.status === 'cleaning') {
+      if (savedOrder.status === 'cleaning' && prevStatus === 'new') {
         notifyWasherNewItem(savedOrder);
+        notifyOrderPickup(savedOrder).catch(err => console.warn('Telegram pickup notify error:', err));
+      } else if (savedOrder.status === 'delivery' && prevStatus === 'cleaning') {
+        notifyOrderReady(savedOrder).catch(err => console.warn('Telegram ready notify error:', err));
+      } else if (savedOrder.status === 'done' && prevStatus !== 'done') {
+        notifyOrderCompleted(savedOrder).catch(err => console.warn('Telegram completed notify error:', err));
       }
     }
 
