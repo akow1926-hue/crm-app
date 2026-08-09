@@ -289,13 +289,21 @@ function buildOrderActionButtons(order) {
 
 // Helper to format items summary string
 function formatItemsList(items, fallbackCount, fallbackArea) {
-  if (Array.isArray(items) && items.length > 0) {
-    return items.map((it, idx) => {
+  let list = items;
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list);
+    } catch (e) {
+      return `• <b>Состав:</b> ${escapeHtml(items)}`;
+    }
+  }
+  if (Array.isArray(list) && list.length > 0) {
+    return list.map((it, idx) => {
       const name = it.serviceName || it.name || 'Изделие';
       const qty = it.qty || 1;
       const unit = it.unit || 'шт';
-      const dims = it.width && it.length ? ` (${it.width}м × ${it.length}м = ${it.area || (it.width * it.length).toFixed(2)} м²)` : '';
-      const price = it.price ? ` — ${it.price.toLocaleString()} сум` : '';
+      const dims = it.width && it.length ? ` (${it.width}м × ${it.length}м = ${it.area || (it.width * it.length).toFixed(2)} м²)` : (it.size ? ` (${it.size})` : '');
+      const price = it.price ? ` — ${Number(it.price).toLocaleString()} сум` : '';
       return `• <b>${idx + 1}. ${escapeHtml(name)}</b>: ${qty} ${unit}${dims}${price}`;
     }).join('\n');
   }
