@@ -64,7 +64,8 @@ export const initialOrders = [
     notes: "Доставить до 18:00 на рецепшн"
   },
   {
-    id: "5204",
+    id: null,
+    tempId: "TMP-5204",
     clientName: "Фарход Усманов",
     clientPhone: "+998 97 911 22 33",
     address: "г. Самарканд, Микрорайон 12, д. 4",

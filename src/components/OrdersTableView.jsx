@@ -23,11 +23,12 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
 
   // Filtering
   const filteredOrders = orders.filter(order => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch = 
-      order.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.phone.includes(searchQuery) ||
-      order.id.includes(searchQuery) ||
-      order.address.toLowerCase().includes(searchQuery.toLowerCase());
+      String(order.clientName || '').toLowerCase().includes(q) ||
+      String(order.phone || order.clientPhone || '').includes(q) ||
+      String(order.id || '').includes(q) ||
+      String(order.address || '').toLowerCase().includes(q);
 
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;

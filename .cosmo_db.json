@@ -35,6 +35,30 @@
       "status": "В движении (GPS передаётся)",
       "lastUpdate": "2026-08-08T15:47:24.694Z",
       "isOnline": true
+    },
+    "AKOBIRJAN": {
+      "name": "AKOBIRJAN",
+      "lat": 39.64,
+      "lng": 66.92,
+      "speed": 0,
+      "heading": 0,
+      "accuracy": 50000,
+      "battery": 95,
+      "status": "Активен (Периодический пинг)",
+      "lastUpdate": "2026-08-09T19:36:23.361Z",
+      "isOnline": true
+    },
+    "Акобир (Курьер)": {
+      "name": "Акобир (Курьер)",
+      "lat": 39.64,
+      "lng": 66.92,
+      "speed": 0,
+      "heading": 0,
+      "accuracy": 50000,
+      "battery": 95,
+      "status": "В движении (GPS передаётся)",
+      "lastUpdate": "2026-08-09T19:36:15.372Z",
+      "isOnline": true
     }
   }
 }

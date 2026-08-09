@@ -25,4 +25,5 @@ dist-ssr
 .cosmo_db.json
 .artifacts/
 .env
+*.apk
 

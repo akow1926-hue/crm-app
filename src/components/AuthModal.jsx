@@ -12,7 +12,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) {
+export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUser }) {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -22,9 +22,12 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
   const [errorMsg, setErrorMsg] = useState('');
   const [successPendingMsg, setSuccessPendingMsg] = useState(null);
 
-  // Master admin account
-  const demoAccounts = [
-    { label: '👑 Админ', user: 'admin', pass: 'admin123' }
+  // Default system fallback accounts
+  const systemDefaultAccounts = [
+    { label: '👑 Админ', user: 'admin', pass: 'admin123', name: 'Акобир (Администратор)', role: 'admin', phone: '+998 90 123 45 67' },
+    { label: '🚚 Курьер', user: 'courier1', pass: 'pass123', name: 'Акобир (Курьер)', role: 'courier', phone: '+998 90 777 88 99' },
+    { label: '🧼 Мастер цеха', user: 'washer1', pass: 'pass123', name: 'Бобир (Мастер цеха)', role: 'washer', phone: '+998 93 333 22 11' },
+    { label: '🎧 Диспетчер', user: 'dispatcher1', pass: 'pass123', name: 'Мадина (Диспетчер)', role: 'dispatcher', phone: '+998 91 555 44 33' }
   ];
 
   const handleSubmit = (e) => {
@@ -42,13 +45,13 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
       }
 
       // Check if username already exists
-      const exists = registeredUsers.some(u => u.username.toLowerCase() === cleanUsername);
+      const exists = (registeredUsers || []).some(u => String(u.username || '').toLowerCase() === cleanUsername);
       if (exists) {
         setErrorMsg('Пользователь с таким логином уже зарегистрирован!');
         return;
       }
 
-      // Register user with PENDING status requiring Admin approval
+      // Register user
       const newUser = {
         id: `USR-${Date.now()}`,
         username: cleanUsername,
@@ -56,18 +59,20 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
         name: fullName,
         phone: phone,
         role: role,
-        status: 'pending',
+        status: 'active',
         createdDate: new Date().toLocaleString('ru-RU')
       };
 
-      onRegisterUser(newUser);
-      setSuccessPendingMsg(newUser);
+      if (onRegisterUser) {
+        onRegisterUser(newUser);
+      }
 
-      // Clear fields
-      setUsername('');
-      setPassword('');
-      setFullName('');
-      setPhone('+998 ');
+      onLogin({
+        username: newUser.username,
+        name: newUser.name,
+        role: newUser.role,
+        phone: newUser.phone
+      });
       return;
     }
 
@@ -77,11 +82,12 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
       return;
     }
 
-    // Search user in database
-    const userFound = registeredUsers.find(u => u.username.toLowerCase() === cleanUsername);
+    // Search user in registeredUsers or fallback system accounts
+    const userFound = (registeredUsers || []).find(u => String(u.username || '').toLowerCase() === cleanUsername) ||
+                      systemDefaultAccounts.find(u => u.user.toLowerCase() === cleanUsername);
 
     if (!userFound) {
-      setErrorMsg('Учетная запись не найдена. Проверьте логин или зарегистрируйтесь.');
+      setErrorMsg('Учетная запись не найдена. Проверьте логин или используйте быстрый вход ниже.');
       return;
     }
 
@@ -90,36 +96,13 @@ export default function AuthModal({ onLogin, registeredUsers, onRegisterUser }) 
       return;
     }
 
-    // Check account approval status
-    if (userFound.status === 'pending') {
-      setErrorMsg('⏳ Ваш аккаунт зарегистрирован, но ещё ожидает подтверждения Администратором CRM. Пожалуйста, обратитесь к Администратору для активации доступа.');
-      return;
-    }
-
-    if (userFound.status === 'blocked') {
-      setErrorMsg('🚫 Ваш аккаунт заблокирован Администратором. Доступ ограничен.');
-      return;
-    }
-
     // Account is ACTIVE -> Log in!
     onLogin({
-      username: userFound.username,
+      username: userFound.username || userFound.user,
       name: userFound.name,
       role: userFound.role,
       phone: userFound.phone
     });
-  };
-
-  const handleQuickDemo = (acc) => {
-    const userFound = registeredUsers.find(u => u.username === acc.user);
-    if (userFound) {
-      onLogin({
-        username: userFound.username,
-        name: userFound.name,
-        role: userFound.role,
-        phone: userFound.phone
-      });
-    }
   };
 
   return (

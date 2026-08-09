@@ -411,8 +411,9 @@ img, video, iframe, canvas, svg {
     padding: 12px !important;
   }
 
-  /* Grid layout fallback overrides for inline styles on phone screens */
-  div[style*="gridTemplateColumns"] {
-    grid-template-columns: 1fr !important;
+  /* Compact button styles for small mobile screens */
+  .btn {
+    white-space: normal;
+    text-align: center;
   }
 }

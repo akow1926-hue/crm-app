@@ -28,7 +28,10 @@ import {
   Search,
   Filter,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Headphones,
+  Home
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
@@ -89,6 +92,19 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [smsSending, setSmsSending] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
+  const [editModalOrder, setEditModalOrder] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    id: '',
+    clientName: '',
+    phone: '',
+    address: '',
+    district: 'Сиёб',
+    landmark: '',
+    language: 'Русский',
+    gpsLocation: '',
+    notes: '',
+    totalAmount: 0
+  });
 
   // Load dynamic service catalog (configured by Admin)
   const availableServices = (() => {
@@ -126,9 +142,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     district: 'Сиёб',
     language: 'Русский',
     landmark: '',
-    totalAmount: 180000,
     notes: '',
-    itemsCount: 1
+    items: [
+      { serviceId: 'S-1', name: 'Мойка ковров', unit: 'м²', qty: 1, price: 15000 }
+    ]
   });
 
   // Filter logic
@@ -190,16 +207,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         <span style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '5px',
-          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.25) 100%)',
+          gap: '3px',
+          background: 'rgba(6, 182, 212, 0.15)',
           border: '1px solid #06b6d4',
           color: '#38bdf8',
-          padding: '4px 10px',
-          borderRadius: '8px',
-          fontSize: '12px',
+          padding: '2px 6px',
+          borderRadius: '6px',
+          fontSize: '11px',
           fontWeight: '700'
         }}>
-          🇺🇿 O'zbek tili
+          🇺🇿 UZ
         </span>
       );
     }
@@ -208,16 +225,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         <span style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '5px',
-          background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.2) 0%, rgba(245, 158, 11, 0.25) 100%)',
+          gap: '3px',
+          background: 'rgba(234, 88, 12, 0.15)',
           border: '1px solid #f97316',
           color: '#fb923c',
-          padding: '4px 10px',
-          borderRadius: '8px',
-          fontSize: '12px',
+          padding: '2px 6px',
+          borderRadius: '6px',
+          fontSize: '11px',
           fontWeight: '700'
         }}>
-          🇹🇯 Тоҷикӣ
+          🇹🇯 TJ
         </span>
       );
     }
@@ -225,16 +242,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       <span style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '5px',
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.25) 100%)',
+        gap: '3px',
+        background: 'rgba(99, 102, 241, 0.15)',
         border: '1px solid #818cf8',
         color: '#a5b4fc',
-        padding: '4px 10px',
-        borderRadius: '8px',
-        fontSize: '12px',
+        padding: '2px 6px',
+        borderRadius: '6px',
+        fontSize: '11px',
         fontWeight: '700'
       }}>
-        🇷🇺 Русский язык
+        🇷🇺 RU
       </span>
     );
   };
@@ -259,6 +276,56 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     } else {
       alert('Геолокация не поддерживается вашим браузером');
     }
+  };
+
+  // Open Edit Modal
+  const openEditModal = (order) => {
+    setEditModalOrder(order);
+    setEditFormData({
+      id: order.id || '',
+      tempId: order.tempId || '',
+      clientName: order.clientName || '',
+      phone: order.phone || order.clientPhone || '',
+      address: order.address || '',
+      district: order.district || 'Сиёб',
+      landmark: order.landmark || '',
+      language: order.language || 'Русский',
+      gpsLocation: order.gpsLocation || '',
+      notes: order.notes || order.comment || '',
+      totalAmount: order.totalAmount || order.agreedAmount || 0
+    });
+  };
+
+  // Save Edit Order
+  const handleSaveEditOrder = (e) => {
+    e.preventDefault();
+    if (!editModalOrder) return;
+
+    setOrders(orders.map(o => {
+      const isTarget = (o.id && editModalOrder.id && o.id === editModalOrder.id) ||
+                       (o.tempId && editModalOrder.tempId && o.tempId === editModalOrder.tempId) ||
+                       (o === editModalOrder);
+      if (isTarget) {
+        return {
+          ...o,
+          id: editFormData.id.trim() || null,
+          clientName: editFormData.clientName,
+          phone: editFormData.phone,
+          clientPhone: editFormData.phone,
+          address: editFormData.address,
+          district: editFormData.district,
+          landmark: editFormData.landmark,
+          language: editFormData.language,
+          gpsLocation: editFormData.gpsLocation,
+          notes: editFormData.notes,
+          totalAmount: parseFloat(editFormData.totalAmount) || 0
+        };
+      }
+      return o;
+    }));
+
+    alert('Заказ успешно обновлен!');
+    setEditModalOrder(null);
   };
 
   // Open Pickup Modal with initial items
@@ -420,6 +487,23 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const handleCreateStreetOrder = (e) => {
     e.preventDefault();
     const newId = getNextSequentialId();
+    const formattedItems = (streetOrder.items || []).map(it => {
+      const q = parseInt(it.qty) || 1;
+      const p = parseFloat(it.price) || 0;
+      const isFixed = it.unit === 'шт' || it.unit === 'комплект' || it.unit === 'место';
+      return {
+        name: `${it.name} (${it.unit})`,
+        serviceName: it.name,
+        unit: it.unit,
+        qty: q,
+        price: p,
+        total: isFixed ? q * p : 0
+      };
+    });
+
+    const fixedTotalAmount = formattedItems.reduce((sum, it) => sum + (it.total || 0), 0);
+    const totalItemsCount = formattedItems.reduce((sum, it) => sum + it.qty, 0);
+
     const newOrderObj = {
       id: newId,
       clientName: streetOrder.clientName || 'Клиент с улицы',
@@ -429,15 +513,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
       district: streetOrder.district,
       language: streetOrder.language || 'Русский',
       landmark: streetOrder.landmark || '',
-      status: 'cleaning', // Immediately picked up
+      status: 'cleaning', // Immediately picked up & in washer workshop
       paymentStatus: 'unpaid',
       assignedCourier: courierName,
       dispatcherName: `Курьер (${courierName})`,
       urgent: false,
-      items: [{ name: 'Ковры (Забор на месте)', qty: streetOrder.itemsCount, price: 18000, total: streetOrder.itemsCount * 18000 }],
-      totalAmount: streetOrder.totalAmount || (streetOrder.itemsCount * 18000),
+      itemsCount: totalItemsCount,
+      items: formattedItems,
+      totalAmount: fixedTotalAmount,
       paidAmount: 0,
-      notes: streetOrder.notes + (gpsLocation ? ` | GPS: ${gpsLocation}` : ''),
+      notes: (streetOrder.notes || '') + (gpsLocation ? ` | GPS: ${gpsLocation}` : ''),
       createdDate: new Date().toLocaleString('ru-RU')
     };
 
@@ -447,7 +532,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '850px', margin: '0 auto', width: '100%' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
       {/* Top Mobile Header */}
       <div className="glass-card" style={{
         background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%)',
@@ -679,15 +764,29 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
 
       {/* VIEW 1: Street Order Form */}
       {activeSubTab === 'newOrder' && (
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1.5px solid #06b6d4' }}>
-          <h3 style={{ fontSize: '17px', fontWeight: '900', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', color: '#38bdf8' }}>
-            ➕ Оформление заказа "С улицы" (Курьером на выезде)
-          </h3>
+        <div className="glass-card animate-fade-in" style={{
+          width: '100%',
+          maxWidth: '480px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+          border: '1.5px solid #06b6d4',
+          borderRadius: '16px',
+          padding: '16px',
+          boxShadow: '0 8px 24px rgba(6, 182, 212, 0.2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+            <Package size={18} color="#38bdf8" />
+            <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#38bdf8', margin: 0 }}>
+              ➕ Заказ "С улицы" (Курьером)
+            </h3>
+          </div>
 
-          <form onSubmit={handleCreateStreetOrder} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="input-group">
-                <label className="input-label">ФИО Клиента *</label>
+          <form onSubmit={handleCreateStreetOrder} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11px' }}>ФИО Клиента *</label>
                 <input 
                   type="text" 
                   required
@@ -695,29 +794,57 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   onChange={(e) => setStreetOrder({ ...streetOrder, clientName: e.target.value })}
                   className="input-field" 
                   placeholder="Имя клиента"
+                  style={{ fontSize: '13px', padding: '8px 10px' }}
                 />
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Телефон Клиента *</label>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11px' }}>Телефон *</label>
                 <input 
                   type="text" 
                   required
                   value={streetOrder.phone} 
                   onChange={(e) => setStreetOrder({ ...streetOrder, phone: e.target.value })}
                   className="input-field" 
-                  placeholder="+998 90 123 45 67"
+                  placeholder="+998 90..."
+                  style={{ fontSize: '13px', padding: '8px 10px' }}
                 />
               </div>
             </div>
 
-            <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="input-group">
-                <label className="input-label">Район города (Самарканд)</label>
+            <div className="input-group" style={{ margin: 0 }}>
+              <label className="input-label" style={{ fontSize: '11px' }}>Адрес (Улица, дом, кв.) *</label>
+              <input 
+                type="text" 
+                required
+                value={streetOrder.address} 
+                onChange={(e) => setStreetOrder({ ...streetOrder, address: e.target.value })}
+                className="input-field" 
+                placeholder="Улица, дом, квартира"
+                style={{ fontSize: '13px', padding: '8px 10px' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11px' }}>Ориентир</label>
+                <input 
+                  type="text" 
+                  value={streetOrder.landmark} 
+                  onChange={(e) => setStreetOrder({ ...streetOrder, landmark: e.target.value })}
+                  className="input-field" 
+                  placeholder="Рядом с..."
+                  style={{ fontSize: '13px', padding: '8px 10px' }}
+                />
+              </div>
+
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11px' }}>Район</label>
                 <select 
                   value={streetOrder.district}
                   onChange={(e) => setStreetOrder({ ...streetOrder, district: e.target.value })}
                   className="select-field"
+                  style={{ fontSize: '12.5px', padding: '8px 10px' }}
                 >
                   <option value="Сиёб">Сиёб</option>
                   <option value="Багишамальский">Багишамальский</option>
@@ -729,95 +856,182 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   <option value="Центр">Центр</option>
                 </select>
               </div>
-
-              <div className="input-group">
-                <label className="input-label">Язык общения клиента</label>
-                <select 
-                  value={streetOrder.language}
-                  onChange={(e) => setStreetOrder({ ...streetOrder, language: e.target.value })}
-                  className="select-field"
-                >
-                  <option value="Русский">Русский язык</option>
-                  <option value="Узбекский">O'zbek tili</option>
-                  <option value="Таджикский">Тоҷикӣ</option>
-                </select>
-              </div>
             </div>
 
-            <div className="input-group">
-              <label className="input-label">Точный адрес (Улица, дом, квартира)</label>
-              <input 
-                type="text" 
-                required
-                value={streetOrder.address} 
-                onChange={(e) => setStreetOrder({ ...streetOrder, address: e.target.value })}
-                className="input-field" 
-                placeholder="Улица, дом, квартира"
-              />
+            <div className="input-group" style={{ margin: 0 }}>
+              <label className="input-label" style={{ fontSize: '11px' }}>Язык общения</label>
+              <select 
+                value={streetOrder.language}
+                onChange={(e) => setStreetOrder({ ...streetOrder, language: e.target.value })}
+                className="select-field"
+                style={{ fontSize: '12.5px', padding: '8px 10px' }}
+              >
+                <option value="Русский">Русский язык</option>
+                <option value="Узбекский">O'zbek tili</option>
+                <option value="Таджикский">Тоҷикӣ</option>
+              </select>
             </div>
 
-            <div className="input-group">
-              <label className="input-label">Ориентир (Рядом с...)</label>
-              <input 
-                type="text" 
-                value={streetOrder.landmark} 
-                onChange={(e) => setStreetOrder({ ...streetOrder, landmark: e.target.value })}
-                className="input-field" 
-                placeholder="Например: Возле мечети / Корзинки"
-              />
-            </div>
-
-            <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="input-group">
-                <label className="input-label">Кол-во ковров / вещей (шт)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  value={streetOrder.itemsCount} 
-                  onChange={(e) => setStreetOrder({ ...streetOrder, itemsCount: parseInt(e.target.value) || 1 })}
-                  className="input-field" 
-                />
+            {/* DYNAMIC SERVICES & ITEMS PICKER */}
+            <div style={{
+              background: 'rgba(6, 182, 212, 0.08)',
+              border: '1.5px solid rgba(6, 182, 212, 0.35)',
+              padding: '12px',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: '800', color: '#38bdf8' }}>📦 Позиции & Услуги заказа:</span>
+                <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>Цену можно менять</span>
               </div>
 
-              <div className="input-group">
-                <label className="input-label" style={{ color: '#facc15' }}>Договорная сумма (сум) *</label>
-                <input 
-                  type="number" 
-                  value={streetOrder.totalAmount} 
-                  onChange={(e) => setStreetOrder({ ...streetOrder, totalAmount: parseFloat(e.target.value) || 0 })}
-                  className="input-field" 
-                  style={{ color: '#facc15', fontWeight: '800' }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(streetOrder.items || []).map((item, idx) => (
+                  <div key={idx} style={{
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#facc15' }}>Позиция #{idx + 1}</span>
+                      {(streetOrder.items || []).length > 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setStreetOrder({
+                              ...streetOrder,
+                              items: streetOrder.items.filter((_, i) => i !== idx)
+                            });
+                          }}
+                          className="btn-icon" 
+                          style={{ padding: '2px', color: '#f43f5e' }}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    <select 
+                      value={item.name}
+                      onChange={(e) => {
+                        const selectedSvc = availableServices.find(s => s.name === e.target.value);
+                        const nextItems = [...streetOrder.items];
+                        nextItems[idx] = {
+                          ...nextItems[idx],
+                          serviceId: selectedSvc?.id || nextItems[idx].serviceId,
+                          name: e.target.value,
+                          unit: selectedSvc?.unit || 'шт',
+                          price: selectedSvc?.price || nextItems[idx].price
+                        };
+                        setStreetOrder({ ...streetOrder, items: nextItems });
+                      }}
+                      className="select-field"
+                      style={{ fontSize: '12.5px', padding: '6px 8px' }}
+                    >
+                      {availableServices.map(svc => (
+                        <option key={svc.id} value={svc.name}>
+                          {svc.name} ({svc.unit}) — {svc.price.toLocaleString()} сум
+                        </option>
+                      ))}
+                    </select>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div className="input-group" style={{ margin: 0 }}>
+                        <label className="input-label" style={{ fontSize: '10.5px' }}>Кол-во ({item.unit})</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          required
+                          value={item.qty}
+                          onChange={(e) => {
+                            const nextItems = [...streetOrder.items];
+                            nextItems[idx].qty = parseInt(e.target.value) || 1;
+                            setStreetOrder({ ...streetOrder, items: nextItems });
+                          }}
+                          className="input-field"
+                          style={{ fontSize: '12.5px', padding: '6px 8px', fontWeight: '800' }}
+                        />
+                      </div>
+
+                      <div className="input-group" style={{ margin: 0 }}>
+                        <label className="input-label" style={{ fontSize: '10.5px' }}>Цена за 1 {item.unit} (сум)</label>
+                        <input 
+                          type="number"
+                          required
+                          value={item.price}
+                          onChange={(e) => {
+                            const nextItems = [...streetOrder.items];
+                            nextItems[idx].price = parseFloat(e.target.value) || 0;
+                            setStreetOrder({ ...streetOrder, items: nextItems });
+                          }}
+                          className="input-field"
+                          style={{ fontSize: '12.5px', padding: '6px 8px', color: '#34d399', fontWeight: '800' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+                  setStreetOrder({
+                    ...streetOrder,
+                    items: [
+                      ...(streetOrder.items || []),
+                      { serviceId: defaultSvc.id, name: defaultSvc.name, unit: defaultSvc.unit, qty: 1, price: defaultSvc.price }
+                    ]
+                  });
+                }}
+                className="btn btn-secondary"
+                style={{ fontSize: '11.5px', padding: '6px 10px', borderStyle: 'dashed', justifyContent: 'center' }}
+              >
+                <Plus size={13} /> Добавить позицию
+              </button>
             </div>
 
-            <div className="input-group">
-              <label className="input-label">Комментарий / Примечание курьера</label>
+            <div className="input-group" style={{ margin: 0 }}>
+              <label className="input-label" style={{ fontSize: '11px' }}>Примечание курьера</label>
               <textarea 
                 rows={2}
                 value={streetOrder.notes} 
                 onChange={(e) => setStreetOrder({ ...streetOrder, notes: e.target.value })}
                 className="textarea-field" 
-                placeholder="Особые пожелания клиента, состояние ковра, договоренности"
+                placeholder="Состояние ковра, дефекты, ориентиры..."
+                style={{ fontSize: '12.5px' }}
               />
             </div>
 
-            <button type="button" onClick={handleCaptureGPS} className="btn btn-secondary">
-              <Compass size={16} /> {gpsLocation ? `GPS Захвачен (${gpsLocation})` : 'Захватить текущие GPS координаты'}
+            <button type="button" onClick={handleCaptureGPS} className="btn btn-secondary" style={{ padding: '8px', fontSize: '12px' }}>
+              <Compass size={14} /> {gpsLocation ? `📍 GPS: ${gpsLocation}` : '📍 Захватить координаты'}
             </button>
 
-            <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)', padding: '14px' }}>
-              <CheckCircle2 size={18} /> Принять заказ & Отправить в цех
+            <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)', padding: '12px', fontSize: '14px', fontWeight: '800' }}>
+              <CheckCircle2 size={16} /> Принять заказ & Отправить в цех
             </button>
           </form>
         </div>
       )}
 
-      {/* VIEW 2: Order Cards List */}
+      {/* VIEW 2: Order Cards List (Grid layout with 4 square action buttons) */}
       {activeSubTab !== 'newOrder' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))',
+          gap: '14px',
+          justifyContent: 'start',
+          width: '100%'
+        }}>
           {currentList.length === 0 ? (
-            <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
+            <div className="glass-card" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
               <CheckCircle2 size={40} color="#10b981" style={{ margin: '0 auto 12px auto' }} />
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff' }}>Все задачи в данном разделе выполнены!</div>
               <div style={{ fontSize: '13px', marginTop: '4px' }}>Новые заявки от диспетчера появятся здесь в реальном времени.</div>
@@ -829,7 +1043,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               const totalSum = order.totalAmount || order.agreedAmount || 0;
               const isPaid = order.paymentStatus === 'paid';
               const isPartial = order.paymentStatus === 'partial';
-              const dispatcherName = order.dispatcherName || order.createdBy || 'Диспетчерская служба';
+              const dispatcherName = order.dispatcherName || order.createdBy || 'Диспетчер';
               const commentText = order.notes || order.comment || '';
               const orderId = (order.id && order.id !== 'Б/Н' && order.id !== '-') ? order.id : null;
 
@@ -839,359 +1053,248 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   className="glass-card"
                   style={{
                     background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 17, 40, 0.98) 100%)',
-                    border: order.urgent ? '1.5px solid #f43f5e' : '1.5px solid rgba(59, 130, 246, 0.3)',
-                    borderLeft: order.urgent ? '6px solid #f43f5e' : '6px solid #facc15',
-                    borderRadius: '20px',
-                    padding: '14px',
+                    border: order.urgent ? '1.5px solid #f43f5e' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '14px',
+                    padding: '12px 14px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '14px',
-                    boxShadow: order.urgent ? '0 10px 30px rgba(244, 63, 94, 0.25)' : '0 10px 30px rgba(0, 0, 0, 0.5)',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'anywhere',
+                    gap: '6px',
+                    boxShadow: order.urgent ? '0 4px 16px rgba(244, 63, 94, 0.3)' : '0 4px 14px rgba(0, 0, 0, 0.45)',
                     width: '100%',
-                    maxWidth: '100%'
+                    maxWidth: '320px',
+                    wordBreak: 'break-word'
                   }}
                 >
-                  {/* Card Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
-                      <span style={{
-                        background: orderId ? 'linear-gradient(135deg, #facc15 0%, #eab308 100%)' : 'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-                        color: orderId ? '#070d1e' : '#ffffff',
-                        padding: '4px 10px',
-                        borderRadius: '10px',
-                        fontWeight: '900',
-                        fontSize: '13.5px',
-                        boxShadow: orderId ? '0 2px 8px rgba(250, 204, 21, 0.4)' : 'none'
-                      }}>
-                        📦 {orderId ? `Заказ #${orderId}` : 'Заказ (Б/Н)'}
-                      </span>
-
+                  {/* Row 1: Left Urgency & District, Right Order ID */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       {order.urgent && (
-                        <span className="badge badge-cancel" style={{ fontSize: '11px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <ShieldAlert size={12} /> 🔥 СРОЧНО
+                        <span className="badge badge-cancel" style={{ fontSize: '10px', padding: '1px 5px', fontWeight: '800' }}>
+                          🔥 СРОЧНО
                         </span>
                       )}
-
-                      <span style={{
-                        background: 'rgba(59, 130, 246, 0.2)',
-                        border: '1px solid rgba(59, 130, 246, 0.4)',
-                        color: '#60a5fa',
-                        padding: '3px 10px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '700'
-                      }}>
+                      <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>
                         📍 {order.district || 'Самарканд'}
                       </span>
                     </div>
+                    <span style={{ fontSize: '15px', fontWeight: '900', color: orderId ? '#facc15' : '#94a3b8' }}>
+                      № {orderId ? orderId : 'Б/Н'}
+                    </span>
+                  </div>
 
+                  {/* Row 2: Courier & Date/Time */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#94a3b8' }}>
+                    <Truck size={13} color="#facc15" />
+                    <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{order.assignedCourier || courierName}</span>
+                    <span style={{ color: '#64748b' }}>•</span>
+                    <span>{order.createdDate || 'Сегодня'}</span>
+                  </div>
+
+                  {/* Row 3: Client Name */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>
+                    <User size={14} color="#60a5fa" />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {order.clientName || 'Клиент'}
+                    </span>
+                  </div>
+
+                  {/* Row 4: Phone + SMS + Map Pin */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button 
-                        onClick={() => setReassignModalOrder(order)} 
-                        className="btn btn-secondary"
-                        style={{ padding: '5px 10px', fontSize: '11.5px', borderRadius: '8px' }}
-                        title="Передать другому курьеру"
-                      >
-                        <ArrowLeftRight size={13} /> ⇄ Передать
-                      </button>
-
-                      <span className={`badge badge-${order.status}`} style={{ fontSize: '11.5px', fontWeight: '800', padding: '4px 10px' }}>
-                        {(order.status === 'new' || order.status === 'pickup') && '📥 Ожидает забора'}
-                        {order.status === 'cleaning' && '🧼 Забран (В цеху)'}
-                        {(order.status === 'ready' || order.status === 'delivery') && '📦 Готов / На доставке'}
-                        {order.status === 'done' && '✅ Выполнен'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 1. Client Details: Name, Language Badge, Phone & Fast Action Buttons */}
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                    borderRadius: '14px',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-                      <div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Клиент (ФИО):
-                        </div>
-                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#ffffff', marginTop: '2px' }}>
-                          👤 {order.clientName || 'Клиент'}
-                        </div>
-                      </div>
-
-                      {/* Language Badge */}
-                      <div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '3px', textAlign: 'right' }}>
-                          Язык общения:
-                        </div>
-                        {renderLanguageBadge(order.language)}
-                      </div>
-                    </div>
-
-                    {/* Phone & Instant Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <a 
-                          href={`tel:${cleanPhone}`} 
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: '#ffffff',
-                            padding: '7px 14px',
-                            borderRadius: '10px',
-                            fontWeight: '800',
-                            fontSize: '13.5px',
-                            textDecoration: 'none',
-                            boxShadow: '0 3px 10px rgba(16, 185, 129, 0.35)'
-                          }}
-                        >
-                          <Phone size={15} /> 📞 {clientPhone}
-                        </a>
-
-                        <button
-                          onClick={() => handleCopyPhone(clientPhone, order.id)}
-                          className="btn btn-secondary"
-                          style={{ padding: '7px 10px', fontSize: '11px', borderRadius: '8px' }}
-                          title="Скопировать телефон"
-                        >
-                          <Copy size={13} /> {copiedOrderId === order.id ? '✓ Скопировано' : 'Копировать'}
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => handleOpenSmsModal(order)}
-                        className="btn btn-secondary"
-                        style={{
-                          background: 'rgba(99, 102, 241, 0.2)',
-                          borderColor: 'rgba(99, 102, 241, 0.4)',
-                          color: '#818cf8',
-                          padding: '7px 12px',
-                          fontSize: '12px',
-                          borderRadius: '8px',
-                          fontWeight: '700'
-                        }}
-                      >
-                        <MessageSquare size={14} /> Отправить SMS
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 2. Agreed Price & Payment Information (Договорная сумма диспетчера) */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, rgba(234, 179, 8, 0.08) 100%)',
-                    border: '1.5px solid #facc15',
-                    borderRadius: '14px',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '10px'
-                  }}>
-                    <div>
-                      <div style={{ fontSize: '11.5px', color: '#facc15', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        💰 Договорная сумма (введена диспетчером):
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: '900', color: '#ffffff', textShadow: '0 0 12px rgba(250, 204, 21, 0.4)', marginTop: '2px' }}>
-                        {totalSum.toLocaleString()} сум
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '3px' }}>
-                        Статус оплаты:
-                      </div>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '800',
-                        background: isPaid ? 'rgba(16, 185, 129, 0.25)' : isPartial ? 'rgba(245, 158, 11, 0.25)' : 'rgba(244, 63, 94, 0.25)',
-                        border: isPaid ? '1px solid #10b981' : isPartial ? '1px solid #f59e0b' : '1px solid #f43f5e',
-                        color: isPaid ? '#34d399' : isPartial ? '#fbbf24' : '#f87171'
-                      }}>
-                        {isPaid && `✅ Оплачено полностью (${(order.paidAmount || totalSum).toLocaleString()} сум)`}
-                        {isPartial && `⚠️ Частично (${(order.paidAmount || 0).toLocaleString()} сум)`}
-                        {!isPaid && !isPartial && `🔴 Не оплачено (К оплате: ${totalSum.toLocaleString()} сум)`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 3. Dispatcher Comment / Notes Box (HIGHLIGHTED) */}
-                  <div style={{
-                    background: commentText ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(15, 23, 42, 0.9) 100%)' : 'rgba(255, 255, 255, 0.02)',
-                    border: commentText ? '1.5px solid #f59e0b' : '1px dashed rgba(255, 255, 255, 0.1)',
-                    padding: '12px 14px',
-                    borderRadius: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '800', color: commentText ? '#facc15' : 'var(--text-muted)' }}>
-                      <MessageSquare size={15} />
-                      <span>💬 КОММЕНТАРИЙ / ПРИМЕЧАНИЕ ДИСПЕТЧЕРА:</span>
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: commentText ? '#ffffff' : 'var(--text-dim)', lineHeight: '1.45', marginTop: '2px' }}>
-                      {commentText ? commentText : 'Диспетчер не оставил дополнительных примечаний к заказу.'}
-                    </div>
-                  </div>
-
-                  {/* 4. Address, Landmark, TimeSlot & Yandex Navigation */}
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '14px',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <MapPin size={18} color="#facc15" style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>
-                            {order.address || 'Адрес не указан'}
-                          </div>
-                          {order.landmark && (
-                            <div style={{ fontSize: '12.5px', color: '#facc15', fontWeight: '700', marginTop: '3px' }}>
-                              📍 <strong>Ориентир:</strong> {order.landmark}
-                            </div>
-                          )}
-                          <div style={{ fontSize: '12px', color: '#38bdf8', marginTop: '3px' }}>
-                            🕒 <strong>Удобное время:</strong> {order.timeSlot || 'В любое время'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Navigation Link */}
                       <a 
-                        href={order.gpsLocation ? `https://yandex.ru/maps/?text=${encodeURIComponent(order.gpsLocation)}` : `https://yandex.ru/maps/?text=${encodeURIComponent((order.district ? order.district + ', ' : '') + order.address + ' Самарканд')}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="btn" 
+                        href={`tel:${cleanPhone}`} 
                         style={{
-                          background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                          color: '#ffffff',
-                          fontSize: '12px',
-                          fontWeight: '800',
-                          padding: '8px 12px',
-                          borderRadius: '10px',
+                          color: '#34d399',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
                           textDecoration: 'none',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          flexShrink: 0,
-                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                          gap: '4px'
                         }}
                       >
-                        <Navigation size={14} /> {order.gpsLocation ? '📍 GPS Маршрут' : 'Навигатор'}
+                        <Phone size={13} /> {clientPhone}
                       </a>
-                    </div>
-                  </div>
-
-                  {/* 5. Items / Carpets List & Tariff per m2 */}
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    borderRadius: '12px',
-                    padding: '10px 12px',
-                    fontSize: '12.5px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px'
-                  }}>
-                    <div>
-                      <strong style={{ color: '#cbd5e1' }}>🧺 Позиции / Изделия:</strong>{' '}
-                      <span style={{ color: '#fff', fontWeight: '600' }}>
-                        {order.items && order.items.length > 0 
-                          ? order.items.map(it => `${it.name} (${it.qty || 1} шт)`).join(', ') 
-                          : 'Ковры / изделия (будут замерены в цеху)'}
-                      </span>
+                      <button
+                        onClick={() => handleOpenSmsModal(order)}
+                        style={{
+                          background: 'rgba(99, 102, 241, 0.2)',
+                          border: '1px solid rgba(99, 102, 241, 0.4)',
+                          color: '#818cf8',
+                          borderRadius: '4px',
+                          padding: '1px 5px',
+                          fontSize: '10px',
+                          cursor: 'pointer',
+                          fontWeight: '700'
+                        }}
+                      >
+                        SMS
+                      </button>
                     </div>
 
-                    {order.agreedPricePerM2 && (
-                      <div style={{ color: '#10b981', fontWeight: '700', marginTop: '2px' }}>
-                        🤝 Договорная ставка за м²: {order.agreedPricePerM2.toLocaleString()} сум/м²
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 6. Dispatcher & Meta Info Footer */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    fontSize: '11.5px',
-                    color: 'var(--text-muted)',
-                    paddingTop: '6px',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <User size={13} color="#94a3b8" />
-                      <span>Оформил диспетчер: <strong style={{ color: '#e2e8f0' }}>{dispatcherName}</strong></span>
-                    </div>
-                    <div>
-                      <span>Создан: <strong style={{ color: '#e2e8f0' }}>{order.createdDate || 'Не указано'}</strong></span>
-                    </div>
-                  </div>
-
-                  {/* 7. Action Buttons */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                    <button 
-                      onClick={() => handlePrintReceipt(order)}
-                      className="btn btn-secondary"
-                      style={{ fontSize: '12px', padding: '9px 14px', borderRadius: '10px' }}
-                      title="Печать / Скачать чек"
+                    <a 
+                      href={order.gpsLocation ? `https://yandex.ru/maps/?text=${encodeURIComponent(order.gpsLocation)}` : `https://yandex.ru/maps/?text=${encodeURIComponent((order.district ? order.district + ', ' : '') + order.address + ' Самарканд')}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        color: '#f87171',
+                        borderRadius: '6px',
+                        padding: '3px 7px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        textDecoration: 'none'
+                      }}
+                      title="Открыть на карте (Яндекс Навигатор)"
                     >
-                      <Printer size={15} /> Чек
+                      <MapPin size={13} color="#f87171" />
+                    </a>
+                  </div>
+
+                  {/* Row 5: Address */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#cbd5e1', lineHeight: '1.3' }}>
+                    <Home size={13} color="#facc15" style={{ flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {order.address || 'Адрес не указан'}{order.landmark ? ` (${order.landmark})` : ''}
+                    </span>
+                  </div>
+
+                  {/* Row 6: Language */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#94a3b8' }}>
+                    <Languages size={13} color="#c084fc" style={{ flexShrink: 0 }} />
+                    <span>{order.language || 'Русский'}</span>
+                  </div>
+
+                  {/* Row 7: Dispatcher */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#94a3b8' }}>
+                    <Headphones size={13} color="#38bdf8" style={{ flexShrink: 0 }} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {dispatcherName}
+                    </span>
+                    {commentText && <span style={{ color: '#fde68a' }}>• 💬 {commentText}</span>}
+                  </div>
+
+                  {/* Row 8: Price & Status */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '6px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '13.5px', fontWeight: '900', color: '#facc15' }}>
+                      {totalSum.toLocaleString()} сум
+                    </span>
+                    <span style={{ fontSize: '10.5px', fontWeight: '700', color: isPaid ? '#34d399' : isPartial ? '#fbbf24' : '#f87171' }}>
+                      {isPaid ? '✅ Оплачено' : isPartial ? '⚠️ Частично' : '🔴 Не оплачено'}
+                    </span>
+                  </div>
+
+                  {/* Row 9: 4 Square Action Buttons [ ⇄ ] [ ✓ ] [ ✏️ ] [ 🧾 ] */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                    {/* 1. Reassign Driver */}
+                    <button 
+                      onClick={() => setReassignModalOrder(order)} 
+                      className="btn"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#ffffff',
+                        height: '36px',
+                        padding: '0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Смена водителя (Передать заказ)"
+                    >
+                      <ArrowLeftRight size={15} />
                     </button>
 
+                    {/* 2. Accept / Done */}
                     {activeSubTab === 'pickups' ? (
                       <button 
                         onClick={() => openPickupModal(order)}
-                        className="btn btn-primary"
+                        className="btn"
                         style={{
-                          background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)',
-                          color: '#070d1e',
-                          fontSize: '13.5px',
-                          fontWeight: '900',
-                          padding: '10px 18px',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 14px rgba(250, 204, 21, 0.35)'
+                          background: '#10b981',
+                          color: '#ffffff',
+                          height: '36px',
+                          padding: '0',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
                         }}
+                        title="Принял заказ (Забрал в цех)"
                       >
-                        <Check size={16} /> Принять & Передать в цех
+                        <Check size={18} />
                       </button>
                     ) : (
                       <button 
                         onClick={() => openDeliveryModal(order)}
-                        className="btn btn-primary"
+                        className="btn"
                         style={{
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          background: '#10b981',
                           color: '#ffffff',
-                          fontSize: '13.5px',
-                          fontWeight: '900',
-                          padding: '10px 18px',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)'
+                          height: '36px',
+                          padding: '0',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
                         }}
+                        title="Выполнить доставку & Расчет"
                       >
-                        <CheckCircle2 size={16} /> Выполнить доставку & Расчет
+                        <CheckCircle2 size={18} />
                       </button>
                     )}
+
+                    {/* 3. Edit Order */}
+                    <button 
+                      onClick={() => openEditModal(order)}
+                      className="btn"
+                      style={{
+                        background: '#f59e0b',
+                        color: '#070d1e',
+                        height: '36px',
+                        padding: '0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)'
+                      }}
+                      title="Редактировать заказ (адрес, ID, GPS, комментарий)"
+                    >
+                      <Edit3 size={15} />
+                    </button>
+
+                    {/* 4. Receipt */}
+                    <button 
+                      onClick={() => handlePrintReceipt(order)}
+                      className="btn"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#f87171',
+                        height: '36px',
+                        padding: '0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Чек заказа"
+                    >
+                      <Printer size={15} />
+                    </button>
                   </div>
                 </div>
               );
@@ -1210,7 +1313,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   {pickupModalOrder.id ? `#${pickupModalOrder.id}` : 'Б/Н'}
                 </span>
                 <h3 style={{ fontSize: '16.5px', fontWeight: '800', color: '#fff', wordBreak: 'break-word' }}>
-                  {pickupModalOrder.id ? 'Прием заказа у клиента' : 'Прием заказа (ID выдается при замере)'}
+                  {pickupModalOrder.id ? `Заказ #${pickupModalOrder.id}` : 'Прием заказа у клиента'}
                 </h3>
               </div>
               <button onClick={() => setPickupModalOrder(null)} className="btn-icon"><X size={18}/></button>
@@ -1324,18 +1427,18 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   className="btn btn-secondary"
                   style={{ fontSize: '12px', padding: '8px', borderStyle: 'dashed' }}
                 >
-                  <Plus size={14} /> Добавить еще продукт (курпачи, подушки, занавески...)
+                  <Plus size={14} /> Добавить позицию
                 </button>
               </div>
 
               <div className="input-group">
-                <label className="input-label">Примечания к состоянию изделий (пятна / дефекты / договоренности)</label>
+                <label className="input-label">Примечания к состоянию изделий (дефекты / износ)</label>
                 <input 
                   type="text" 
                   value={pickupConditionNotes} 
                   onChange={(e) => setPickupConditionNotes(e.target.value)} 
                   className="input-field" 
-                  placeholder="Например: Пятна на курпаче, износ ковра" 
+                  placeholder="Например: Пятна, износ ковра" 
                 />
               </div>
 
@@ -1356,11 +1459,11 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 }}
               >
                 <Compass size={16} /> 
-                {gpsLocation ? `📍 GPS Локация Захвачена (${gpsLocation})` : '📍 Захватить точную GPS локацию забора'}
+                {gpsLocation ? `📍 GPS Захвачен (${gpsLocation})` : '📍 Захватить GPS забора'}
               </button>
 
-              <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)', color: '#070d1e', fontWeight: '900', padding: '14px' }}>
-                ✓ Подтвердить Забор & Статус "В цеху"
+              <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)', color: '#070d1e', fontWeight: '900', padding: '12px', fontSize: '14px' }}>
+                ✓ Забрал в цех (Присвоить номер заказа)
               </button>
             </form>
           </div>
@@ -1513,7 +1616,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         </div>
       )}
 
-      {/* MODAL 5: Electronic Printable Receipt with explicit Close & Print buttons */}
+
+      {/* MODAL 5: Printable Electronic Receipt (Строгий белый чек) */}
       {receiptModalOrder && (
         <div style={{
           position: 'fixed',
@@ -1528,127 +1632,302 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         }}>
           <div className="glass-card animate-fade-in" style={{
             width: '100%',
-            maxWidth: '460px',
-            maxHeight: '90vh',
+            maxWidth: '440px',
+            maxHeight: '92vh',
             overflowY: 'auto',
             background: '#ffffff',
-            color: '#1e293b',
-            borderRadius: '16px',
+            color: '#000000',
+            borderRadius: '12px',
             padding: '20px',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-            border: '2px solid #3b82f6'
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+            border: '1px solid #cbd5e1',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           }}>
-            {/* Header bar with Close Button */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px dashed #cbd5e1', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Printer size={20} color="#2563eb" />
-                <span style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>Электронный Чек #{receiptModalOrder.id}</span>
-              </div>
-
-              <button 
-                onClick={() => setReceiptModalOrder(null)} 
-                className="btn"
-                style={{ background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}
-                title="Закрыть чек"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Printable Area Content */}
-            <div id="printable-receipt-area" style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-              <div style={{ textAlign: 'center', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '17px', fontWeight: '900', color: '#0f172a' }}>✨ COSMO CLEANING SAMARKAND ✨</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Профессиональная чистка ковров и текстиля</div>
-                <div style={{ marginTop: '6px', fontSize: '12px', fontWeight: '800', background: '#e0f2fe', color: '#0369a1', display: 'inline-block', padding: '3px 10px', borderRadius: '6px' }}>
-                  ЧЕК ДОСТАВКИ №{receiptModalOrder.id}
-                </div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                  {new Date().toLocaleString('ru-RU')}
+            {/* Printable Receipt Content */}
+            <div id="printable-receipt-area" style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#000000' }}>
+              
+              {/* 1. Название */}
+              <div style={{ textAlign: 'center', borderBottom: '2px solid #000000', paddingBottom: '10px' }}>
+                <div style={{ fontSize: '19px', fontWeight: '900', color: '#000000', letterSpacing: '0.5px' }}>Cosmo Cleaning</div>
+                <div style={{ fontSize: '13px', fontWeight: '700', marginTop: '2px', color: '#333333' }}>
+                  Чек заказа №{receiptModalOrder.id || 'Б/Н'}
                 </div>
               </div>
 
-              {/* Client & Courier Info */}
-              <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12.5px' }}>
-                <div>👤 <strong>Клиент:</strong> {receiptModalOrder.clientName || 'Клиент'}</div>
-                <div>📞 <strong>Телефон:</strong> {receiptModalOrder.phone || receiptModalOrder.clientPhone || '-'}</div>
-                <div>🏠 <strong>Адрес:</strong> {receiptModalOrder.district ? `[${receiptModalOrder.district}] ` : ''}{receiptModalOrder.address || '-'}</div>
-                {receiptModalOrder.landmark && <div>📍 <strong>Ориентир:</strong> {receiptModalOrder.landmark}</div>}
-                <div>🗣️ <strong>Язык общения:</strong> {receiptModalOrder.language || 'Русский'}</div>
-                <div>🚚 <strong>Курьер:</strong> {courierName}</div>
-                <div>📞 <strong>Диспетчер:</strong> {receiptModalOrder.dispatcherName || 'Мадина'}</div>
+              {/* 2. Дата и время оформления, затем дата и время окончания */}
+              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
+                <div><strong>Дата и время оформления:</strong> {receiptModalOrder.createdDate || '-'}</div>
+                <div><strong>Дата и время окончания:</strong> {new Date().toLocaleString('ru-RU')}</div>
               </div>
 
-              {/* Comment */}
-              {receiptModalOrder.notes && (
-                <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', color: '#92400e' }}>
-                  💬 <strong>Примечание:</strong> {receiptModalOrder.notes}
+              {/* 3. Данные клиента: имя, телефон, адрес */}
+              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
+                <div><strong>Клиент:</strong> {receiptModalOrder.clientName || 'Клиент'}</div>
+                <div><strong>Телефон:</strong> {receiptModalOrder.phone || receiptModalOrder.clientPhone || '-'}</div>
+                <div><strong>Адрес:</strong> {receiptModalOrder.district ? `[${receiptModalOrder.district}] ` : ''}{receiptModalOrder.address || '-'}{receiptModalOrder.landmark ? ` (${receiptModalOrder.landmark})` : ''}</div>
+              </div>
+
+              {/* 4. Кто обслуживал: курьер и диспетчер */}
+              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
+                <div><strong>Курьер (доставил):</strong> {courierName || receiptModalOrder.assignedCourier || '-'}</div>
+                <div><strong>Диспетчер (принял):</strong> {receiptModalOrder.dispatcherName || receiptModalOrder.createdBy || 'Мадина'}</div>
+              </div>
+
+              {/* 5. Размеры каждого изделия и цены */}
+              <div style={{ borderBottom: '2px solid #000000', paddingBottom: '10px' }}>
+                <div style={{ fontWeight: '800', marginBottom: '6px', fontSize: '13px' }}>Изделия и услуги:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {receiptModalOrder.items && receiptModalOrder.items.length > 0 ? (
+                    receiptModalOrder.items.map((it, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: idx < receiptModalOrder.items.length - 1 ? '1px dashed #e2e8f0' : 'none', paddingBottom: '4px' }}>
+                        <div>
+                          <div style={{ fontWeight: '700' }}>{it.name}</div>
+                          {it.width && it.length ? (
+                            <div style={{ fontSize: '11.5px', color: '#555555' }}>
+                              Размеры: {it.width}м x {it.length}м = {it.area} м² ({it.price?.toLocaleString()} сум/м²)
+                            </div>
+                          ) : it.qty > 1 ? (
+                            <div style={{ fontSize: '11.5px', color: '#555555' }}>
+                              Количество: {it.qty} {it.unit || 'шт'} x {it.price?.toLocaleString()} сум
+                            </div>
+                          ) : null}
+                        </div>
+                        <div style={{ fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                          {(it.total || it.price || 0).toLocaleString()} сум
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#555555' }}>Ковры / изделия (замерены в цеху)</div>
+                  )}
                 </div>
-              )}
-
-              {/* Items List */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px', background: '#fafafa' }}>
-                <div style={{ fontWeight: '800', fontSize: '12px', color: '#475569', marginBottom: '6px' }}>🧺 Изделия / Позиции заказа:</div>
-                {receiptModalOrder.items && receiptModalOrder.items.length > 0 ? (
-                  receiptModalOrder.items.map((it, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: idx < receiptModalOrder.items.length - 1 ? '1px dashed #e2e8f0' : 'none', fontSize: '12.5px' }}>
-                      <span style={{ fontWeight: '700' }}>{it.name} x{it.qty || 1}</span>
-                      <span style={{ fontWeight: '800', color: '#0f172a' }}>{(it.total || it.price || 0).toLocaleString()} сум</span>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>Изделия (замерены в цеху)</div>
-                )}
               </div>
 
-              {/* Total Summary */}
-              <div style={{ borderTop: '2px solid #0f172a', paddingTop: '10px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
-                  <span>ИТОГОВАЯ СУММА:</span>
+              {/* 6. В самом низу: итоговая сумма, оплаченная сумма и способ оплаты */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '2px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '900' }}>
+                  <span>Итоговая сумма:</span>
                   <span>{(receiptModalOrder.totalAmount || receiptModalOrder.agreedAmount || 0).toLocaleString()} сум</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', fontWeight: '700' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
                   <span>Оплаченная сумма:</span>
                   <span>{(receiptModalOrder.paidAmount !== undefined ? receiptModalOrder.paidAmount : (receiptModalOrder.totalAmount || 0)).toLocaleString()} сум</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Способ оплаты:</span>
-                  <span style={{ fontWeight: '700', color: '#2563eb' }}>{receiptModalOrder.paymentType || 'Наличные / Click'}</span>
+                  <span style={{ fontWeight: '700' }}>{receiptModalOrder.paymentType || 'Наличные'}</span>
                 </div>
-              </div>
-
-              {/* Footer info */}
-              <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginTop: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
-                <div><strong>Спасибо, что выбрали Cosmo Cleaning!</strong></div>
-                <div>Служба поддержки: +998 90 123 45 67</div>
               </div>
             </div>
 
             {/* Action Buttons: Print & Close */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
               <button 
                 onClick={() => {
                   window.print();
                 }}
                 className="btn btn-primary"
-                style={{ flex: 1, background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', padding: '10px', fontSize: '13px', fontWeight: '800' }}
+                style={{ flex: 1, background: '#0f172a', color: '#ffffff', padding: '10px', fontSize: '13px', fontWeight: '800', borderRadius: '8px' }}
               >
-                <Printer size={16} /> Распечатать / PDF
+                Печать / PDF
               </button>
 
               <button 
                 onClick={() => setReceiptModalOrder(null)}
                 className="btn btn-secondary"
-                style={{ flex: 1, background: '#e2e8f0', color: '#0f172a', padding: '10px', fontSize: '13px', fontWeight: '800' }}
+                style={{ flex: 1, background: '#f1f5f9', color: '#0f172a', padding: '10px', fontSize: '13px', fontWeight: '800', borderRadius: '8px', border: '1px solid #cbd5e1' }}
               >
-                ❌ Выйти и Вернуться
+                Закрыть
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: Edit Order (Редактирование заказа) */}
+      {editModalOrder && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '12px' }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg-modal)', border: '1.5px solid #f59e0b', padding: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: '#f59e0b', color: '#070d1e', padding: '2px 8px', borderRadius: '6px', fontWeight: '900', fontSize: '13px' }}>
+                  ✏️ Редактирование
+                </span>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>
+                  {editFormData.id ? `Заказ #${editFormData.id}` : 'Заявка (Б/Н)'}
+                </h3>
+              </div>
+              <button onClick={() => setEditModalOrder(null)} className="btn-icon"><X size={18}/></button>
+            </div>
+
+            <form onSubmit={handleSaveEditOrder} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>Номер ID заказа</label>
+                  <input 
+                    type="text" 
+                    value={editFormData.id} 
+                    onChange={(e) => setEditFormData({ ...editFormData, id: e.target.value })} 
+                    className="input-field" 
+                    placeholder="Например: 5267 (или пусто)"
+                    style={{ fontSize: '13px', padding: '8px 10px' }}
+                  />
+                </div>
+
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>Договорная сумма (сум)</label>
+                  <input 
+                    type="number" 
+                    value={editFormData.totalAmount} 
+                    onChange={(e) => setEditFormData({ ...editFormData, totalAmount: e.target.value })} 
+                    className="input-field" 
+                    style={{ fontSize: '13px', padding: '8px 10px', color: '#facc15', fontWeight: '800' }}
+                  />
+                </div>
+              </div>
+
+              <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>ФИО Клиента *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editFormData.clientName} 
+                    onChange={(e) => setEditFormData({ ...editFormData, clientName: e.target.value })} 
+                    className="input-field" 
+                    style={{ fontSize: '13px', padding: '8px 10px' }}
+                  />
+                </div>
+
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>Телефон *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editFormData.phone} 
+                    onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })} 
+                    className="input-field" 
+                    style={{ fontSize: '13px', padding: '8px 10px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11.5px' }}>Адрес клиента *</label>
+                <input 
+                  type="text" 
+                  required
+                  value={editFormData.address} 
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })} 
+                  className="input-field" 
+                  style={{ fontSize: '13px', padding: '8px 10px' }}
+                />
+              </div>
+
+              <div className="responsive-grid-4" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>Район Самарканда</label>
+                  <select 
+                    value={editFormData.district} 
+                    onChange={(e) => setEditFormData({ ...editFormData, district: e.target.value })} 
+                    className="select-field"
+                    style={{ fontSize: '13px', padding: '8px 10px' }}
+                  >
+                    <option value="Сиёб">Сиёб</option>
+                    <option value="Багишамальский">Багишамальский</option>
+                    <option value="Согдиана">Согдиана</option>
+                    <option value="Микрорайон">Микрорайон</option>
+                    <option value="Саттепо">Саттепо</option>
+                    <option value="Железнодорожный">Железнодорожный</option>
+                    <option value="Самаркандский р-н">Самаркандский р-н</option>
+                    <option value="Центр">Центр</option>
+                  </select>
+                </div>
+
+                <div className="input-group" style={{ margin: 0 }}>
+                  <label className="input-label" style={{ fontSize: '11.5px' }}>Язык общения</label>
+                  <select 
+                    value={editFormData.language} 
+                    onChange={(e) => setEditFormData({ ...editFormData, language: e.target.value })} 
+                    className="select-field"
+                    style={{ fontSize: '13px', padding: '8px 10px' }}
+                  >
+                    <option value="Русский">Русский</option>
+                    <option value="Узбекский">O'zbek tili</option>
+                    <option value="Таджикский">Тоҷикӣ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11.5px' }}>Ориентир (Рядом с...)</label>
+                <input 
+                  type="text" 
+                  value={editFormData.landmark} 
+                  onChange={(e) => setEditFormData({ ...editFormData, landmark: e.target.value })} 
+                  className="input-field" 
+                  placeholder="Например: Возле Корзинки"
+                  style={{ fontSize: '13px', padding: '8px 10px' }}
+                />
+              </div>
+
+              {/* GPS Capture / Point on Map */}
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11.5px' }}>Точка на карте / GPS координаты</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="text" 
+                    value={editFormData.gpsLocation} 
+                    onChange={(e) => setEditFormData({ ...editFormData, gpsLocation: e.target.value })} 
+                    className="input-field" 
+                    placeholder="39.6547, 66.9758"
+                    style={{ fontSize: '13px', padding: '8px 10px', flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if ('geolocation' in navigator) {
+                        navigator.geolocation.getCurrentPosition((pos) => {
+                          const coords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+                          setEditFormData({ ...editFormData, gpsLocation: coords });
+                          alert(`GPS точка поставлена: ${coords}`);
+                        });
+                      }
+                    }}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '11px', padding: '8px 12px', flexShrink: 0 }}
+                  >
+                    <Compass size={14} /> Захватить GPS
+                  </button>
+                </div>
+              </div>
+
+              <div className="input-group" style={{ margin: 0 }}>
+                <label className="input-label" style={{ fontSize: '11.5px' }}>Описание / Комментарий курьера</label>
+                <textarea 
+                  rows={2}
+                  value={editFormData.notes} 
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })} 
+                  className="textarea-field" 
+                  placeholder="Дополнительные детали заказа"
+                  style={{ fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button type="button" onClick={() => setEditModalOrder(null)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Отмена
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, background: '#f59e0b', color: '#070d1e', fontWeight: '900' }}>
+                  💾 Сохранить
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

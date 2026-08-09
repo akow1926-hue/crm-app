@@ -16,8 +16,13 @@ function mapOrderFromDB(row) {
     if (match) district = match[1];
   }
 
+  const rawId = String(row.id || '');
+  const isTemp = rawId.startsWith('TMP-') || rawId.startsWith('REQ-') || rawId.startsWith('temp_');
+  const officialId = isTemp ? null : rawId;
+
   return {
-    id: String(row.id),
+    id: officialId,
+    tempId: rawId,
     clientName: row.client_name || '',
     phone: row.client_phone || '',
     clientPhone: row.client_phone || '',
@@ -56,8 +61,10 @@ function mapOrderToDB(order) {
     cleanComment = `[Район: ${order.district}] ` + cleanComment;
   }
 
+  const dbId = order.id || order.tempId || (`TMP-${Date.now()}`);
+
   return {
-    id: String(order.id),
+    id: String(dbId),
     client_name: order.clientName || '',
     client_phone: order.phone || order.clientPhone || '',
     address: order.address || '',

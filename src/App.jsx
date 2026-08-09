@@ -68,10 +68,22 @@ export default function App() {
   // Production State strictly driven by Supabase Postgres DB
   const [orders, setOrdersState] = useState([]);
   const [clients, setClientsState] = useState([]);
-  const [logs, setLogs] = useState(initialLogs);
-  const [registeredUsers, setRegisteredUsersState] = useState([
-    { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
-  ]);
+  const [logs, setLogs] = useState(initialLogs || []);
+  const [registeredUsers, setRegisteredUsersState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_registered_users');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [
+      { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Акобир (Администратор)', role: 'admin', phone: '+998 90 123 45 67', status: 'active', baseSalary: 6000000, createdDate: '2026-08-01 10:00' },
+      { id: 'USR-2', username: 'courier1', pass: 'pass123', name: 'Акобир (Курьер)', role: 'courier', phone: '+998 90 777 88 99', status: 'active', baseSalary: 4500000, createdDate: '2026-08-01 10:00' },
+      { id: 'USR-3', username: 'washer1', pass: 'pass123', name: 'Бобир (Мастер цеха)', role: 'washer', phone: '+998 93 333 22 11', status: 'active', baseSalary: 4000000, createdDate: '2026-08-01 10:00' },
+      { id: 'USR-4', username: 'dispatcher1', pass: 'pass123', name: 'Мадина (Диспетчер)', role: 'dispatcher', phone: '+998 91 555 44 33', status: 'active', baseSalary: 3500000, createdDate: '2026-08-01 10:00' }
+    ];
+  });
 
   // Auto-sync clients database whenever orders are updated or completed!
   const syncClientsFromOrders = (allOrders) => {
@@ -171,16 +183,26 @@ export default function App() {
 
       // 1. Identify deleted orders and remove them from Supabase DB
       prevOrders.forEach(prevOrder => {
-        const stillExists = nextOrders.some(n => String(n.id) === String(prevOrder.id));
+        const stillExists = nextOrders.some(n => 
+          (n.id && prevOrder.id && String(n.id) === String(prevOrder.id)) ||
+          (n.tempId && prevOrder.tempId && String(n.tempId) === String(prevOrder.tempId))
+        );
         if (!stillExists) {
-          deleteSupabaseOrder(prevOrder.id);
+          deleteSupabaseOrder(prevOrder.id || prevOrder.tempId);
         }
       });
 
       // 2. Identify modified or new orders and persist to Supabase DB
       nextOrders.forEach(nextOrder => {
-        const prevOrder = prevOrders.find(o => String(o.id) === String(nextOrder.id));
+        const prevOrder = prevOrders.find(o => 
+          (o.id && nextOrder.id && String(o.id) === String(nextOrder.id)) ||
+          (o.tempId && nextOrder.tempId && String(o.tempId) === String(nextOrder.tempId))
+        );
         if (!prevOrder || JSON.stringify(prevOrder) !== JSON.stringify(nextOrder)) {
+          // If order just got an official ID assigned (upgraded from tempId), delete old temp row in DB
+          if (prevOrder && !prevOrder.id && nextOrder.id && prevOrder.tempId) {
+            deleteSupabaseOrder(prevOrder.tempId);
+          }
           saveSupabaseOrder(nextOrder);
         }
       });
@@ -327,21 +349,31 @@ export default function App() {
     setCurrentUser(null);
   };
 
+
+
   // Request Push Notification permissions on mount
   useEffect(() => {
     requestNotificationPermission();
   }, []);
 
   const handleSaveOrder = (savedOrder) => {
-    const existingOrder = orders.find(o => o.id === savedOrder.id);
+    const existingOrder = orders.find(o => 
+      (o.id && savedOrder.id && o.id === savedOrder.id) ||
+      (o.tempId && savedOrder.tempId && o.tempId === savedOrder.tempId)
+    );
     const prevStatus = existingOrder?.status;
     const prevPaymentStatus = existingOrder?.paymentStatus;
 
     if (existingOrder) {
-      setOrders(orders.map(o => o.id === savedOrder.id ? savedOrder : o));
+      setOrders(orders.map(o => {
+        const isMatch = (o.id && savedOrder.id && o.id === savedOrder.id) ||
+                        (o.tempId && savedOrder.tempId && o.tempId === savedOrder.tempId);
+        return isMatch ? savedOrder : o;
+      }));
     } else {
       setOrders([savedOrder, ...orders]);
-      setLogs([{ id: Date.now(), text: `Создан новый заказ #${savedOrder.id} (${savedOrder.clientName})`, time: 'Только что', type: 'system' }, ...logs]);
+      const orderLabel = savedOrder.id ? `заказ #${savedOrder.id}` : `заявку (${savedOrder.clientName})`;
+      setLogs([{ id: Date.now(), text: `Создана новая ${orderLabel}`, time: 'Только что', type: 'system' }, ...logs]);
       // Push notification to Courier
       notifyCourierNewOrder(savedOrder);
     }
@@ -364,8 +396,6 @@ export default function App() {
 
     // Trigger auto SMS dispatcher if conditions match
     triggerAutoSMSForOrder(savedOrder, prevStatus, prevPaymentStatus);
-
-    // Direct save to Supabase Postgres DB is handled inside setOrders & saveSupabaseOrder
 
     setSelectedOrder(null);
     setIsNewOrderModalOpen(false);
@@ -571,6 +601,8 @@ export default function App() {
               orders={orders} 
               setOrders={setOrders}
               setSelectedOrder={setSelectedOrder}
+              registeredUsers={registeredUsers}
+              setRegisteredUsers={setRegisteredUsers}
             />
           )}
 
