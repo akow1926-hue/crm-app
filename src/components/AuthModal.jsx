@@ -51,7 +51,7 @@ export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUse
         return;
       }
 
-      // Register user
+      // Register user with 'pending' status requiring admin approval
       const newUser = {
         id: `USR-${Date.now()}`,
         username: cleanUsername,
@@ -59,7 +59,7 @@ export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUse
         name: fullName,
         phone: phone,
         role: role,
-        status: 'active',
+        status: 'pending',
         createdDate: new Date().toLocaleString('ru-RU')
       };
 
@@ -67,11 +67,9 @@ export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUse
         onRegisterUser(newUser);
       }
 
-      onLogin({
-        username: newUser.username,
+      setSuccessPendingMsg({
         name: newUser.name,
-        role: newUser.role,
-        phone: newUser.phone
+        role: newUser.role === 'admin' ? 'Администратор' : newUser.role === 'dispatcher' ? 'Диспетчер' : newUser.role === 'courier' ? 'Курьер' : 'Оператор цеха'
       });
       return;
     }
@@ -87,12 +85,23 @@ export default function AuthModal({ onLogin, registeredUsers = [], onRegisterUse
                       systemDefaultAccounts.find(u => u.user.toLowerCase() === cleanUsername);
 
     if (!userFound) {
-      setErrorMsg('Учетная запись не найдена. Проверьте логин или используйте быстрый вход ниже.');
+      setErrorMsg('Учетная запись не найдена. Проверьте логин или зарегистрируйтесь.');
       return;
     }
 
     if (userFound.pass !== password) {
       setErrorMsg('Неверный пароль. Попробуйте снова.');
+      return;
+    }
+
+    // Check account status approval
+    if (userFound.status === 'pending') {
+      setErrorMsg('⏳ Ваш аккаунт ожидает подтверждения администратором. Ожидайте одобрения доступа.');
+      return;
+    }
+
+    if (userFound.status === 'blocked') {
+      setErrorMsg('🚫 Ваш аккаунт заблокирован администратором.');
       return;
     }
 

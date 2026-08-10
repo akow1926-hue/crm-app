@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { saveSupabaseOrder } from '../services/supabaseService';
+import { DeliveryDeadlineBadge } from '../utils/deliveryDeadline';
 
 export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpenNewOrder }) {
   const [draggedOrderId, setDraggedOrderId] = useState(null);
@@ -218,6 +219,7 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
                             <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
                               {order.id ? `#${order.id}` : 'Б/Н'}
                             </span>
+                            <DeliveryDeadlineBadge order={order} />
                             {order.urgent && (
                               <span className="badge badge-cancel" style={{ fontSize: '9px', padding: '2px 6px' }}>
                                 <ShieldAlert size={9} /> СРОЧНО

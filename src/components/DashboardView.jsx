@@ -13,6 +13,7 @@ import {
   KanbanSquare,
   Activity
 } from 'lucide-react';
+import { DeliveryDeadlineBadge } from '../utils/deliveryDeadline';
 
 export default function DashboardView({ orders, clients, activityLogs, onOpenNewOrder, setActiveTab, setSelectedOrder }) {
   // Calculations
@@ -175,8 +176,11 @@ export default function DashboardView({ orders, clients, activityLogs, onOpenNew
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontWeight: '800', color: 'var(--accent-secondary)' }}>{order.id ? `#${order.id}` : 'Б/Н'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
+                      {order.id ? `#${order.id}` : 'Б/Н'}
+                    </span>
+                    <DeliveryDeadlineBadge order={order} />
                     <span style={{ fontSize: '14px', fontWeight: '700' }}>{order.clientName}</span>
                     {order.urgent && (
                       <span className="badge badge-cancel" style={{ fontSize: '10px' }}>

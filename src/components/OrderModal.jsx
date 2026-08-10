@@ -71,6 +71,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
       landmark: targetOrder?.landmark || '',
       status: targetOrder?.status || 'new',
       paymentStatus: targetOrder?.paymentStatus || 'unpaid',
+      deliveryDays: parseInt(targetOrder?.deliveryDays, 10) || 5,
       items: initialItems,
       totalAmount: targetOrder?.totalAmount || 0,
       paidAmount: targetOrder?.paidAmount || 0,
@@ -590,20 +591,39 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
             </div>
           </div>
 
-          {/* Status */}
-          <div className="input-group" style={{ margin: 0 }}>
-            <label className="input-label" style={{ fontSize: '11px' }}>Статус заказа</label>
-            <select 
-              value={formData.status} 
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="select-field"
-              style={{ fontSize: '12.5px', padding: '8px 10px' }}
-            >
-              <option value="new">📥 1. Ожидает забора</option>
-              <option value="cleaning">🧼 2. Забран / В цеху</option>
-              <option value="delivery">📦 3. Готов / На доставке</option>
-              <option value="done">✅ 4. Выполнен</option>
-            </select>
+          {/* Status & Delivery Days (2 cols) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div className="input-group" style={{ margin: 0 }}>
+              <label className="input-label" style={{ fontSize: '11px' }}>Статус заказа</label>
+              <select 
+                value={formData.status} 
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="select-field"
+                style={{ fontSize: '12.5px', padding: '8px 10px' }}
+              >
+                <option value="new">📥 1. Ожидает забора</option>
+                <option value="cleaning">🧼 2. Забран / В цеху</option>
+                <option value="delivery">📦 3. Готов / На доставке</option>
+                <option value="done">✅ 4. Выполнен</option>
+              </select>
+            </div>
+
+            <div className="input-group" style={{ margin: 0 }}>
+              <label className="input-label" style={{ fontSize: '11px', color: '#facc15', fontWeight: '800' }}>⏱️ Срок доставки (дней)</label>
+              <select 
+                value={formData.deliveryDays}
+                onChange={(e) => setFormData({ ...formData, deliveryDays: parseInt(e.target.value, 10) })}
+                className="select-field"
+                style={{ fontSize: '12.5px', padding: '8px 10px', fontWeight: '800', border: '1px solid #facc15' }}
+              >
+                <option value={1}>⚡ 1 день</option>
+                <option value={2}>⚡ 2 дня</option>
+                <option value={3}>⚡ 3 дня</option>
+                <option value={4}>4 дня</option>
+                <option value={5}>📅 5 дней (По умолчанию)</option>
+                <option value={7}>📅 7 дней</option>
+              </select>
+            </div>
           </div>
 
           {/* Urgent Checkbox */}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { deleteSupabaseOrder } from '../services/supabaseService';
+import { DeliveryDeadlineBadge } from '../utils/deliveryDeadline';
 
 export default function OrdersTableView({ orders, setOrders, setSelectedOrder, onOpenNewOrder, searchQuery }) {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -150,6 +151,7 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
                 </button>
               </th>
               <th style={{ padding: '14px 16px' }}>ID</th>
+              <th style={{ padding: '14px 16px' }}>Срок</th>
               <th style={{ padding: '14px 16px' }}>Клиент & Телефон</th>
               <th style={{ padding: '14px 16px' }}>Адрес</th>
               <th style={{ padding: '14px 16px' }}>Позиции</th>
@@ -191,6 +193,10 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
                       {order.urgent && (
                         <span style={{ display: 'block', fontSize: '9px', color: '#f43f5e', fontWeight: '700' }}>СРОЧНО</span>
                       )}
+                    </td>
+
+                    <td style={{ padding: '14px 16px' }}>
+                      <DeliveryDeadlineBadge order={order} />
                     </td>
 
                     <td style={{ padding: '14px 16px' }}>

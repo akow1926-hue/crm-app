@@ -16,6 +16,18 @@ function mapOrderFromDB(row) {
     if (match) district = match[1];
   }
 
+  let deliveryDays = 5;
+  if (commentStr.includes('[DeliveryDays: ')) {
+    const matchDays = commentStr.match(/\[DeliveryDays:\s*(\d+)\]/);
+    if (matchDays) deliveryDays = parseInt(matchDays[1], 10);
+  }
+
+  let pickupDate = null;
+  if (commentStr.includes('[PickupDate: ')) {
+    const matchDate = commentStr.match(/\[PickupDate:\s*([^\]]+)\]/);
+    if (matchDate) pickupDate = matchDate[1];
+  }
+
   const rawId = String(row.id || '');
   const isTemp = rawId.startsWith('TMP-') || rawId.startsWith('REQ-') || rawId.startsWith('temp_');
   const officialId = isTemp ? null : rawId;
@@ -38,6 +50,8 @@ function mapOrderFromDB(row) {
     courier: row.courier || '',
     washer: row.washer || '',
     urgent: isUrgent,
+    deliveryDays: deliveryDays,
+    pickupDate: pickupDate,
     items: Array.isArray(row.items) ? row.items : [],
     notes: commentStr,
     comment: commentStr,
@@ -59,6 +73,14 @@ function mapOrderToDB(order) {
   }
   if (order.district && !cleanComment.includes(`[Район: ${order.district}]`)) {
     cleanComment = `[Район: ${order.district}] ` + cleanComment;
+  }
+  if (order.deliveryDays) {
+    cleanComment = cleanComment.replace(/\[DeliveryDays:\s*\d+\]\s*/g, '');
+    cleanComment = `[DeliveryDays: ${order.deliveryDays}] ` + cleanComment;
+  }
+  if (order.pickupDate) {
+    cleanComment = cleanComment.replace(/\[PickupDate:\s*[^\]]+\]\s*/g, '');
+    cleanComment = `[PickupDate: ${order.pickupDate}] ` + cleanComment;
   }
 
   const dbId = order.id || order.tempId || (`TMP-${Date.now()}`);

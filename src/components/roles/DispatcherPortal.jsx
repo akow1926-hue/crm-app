@@ -19,6 +19,7 @@ import {
 import { sendSMSNotification } from '../../services/smsService';
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendTelegramOrderCard, sendTelegramMessage, getTelegramBotConfig } from '../../services/telegramBotService';
+import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 
 export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -252,6 +253,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
                     <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-secondary)' }}>
                       {order.id ? `#${order.id}` : 'Б/Н'}
                     </span>
+                    <DeliveryDeadlineBadge order={order} />
                     {order.urgent && (
                       <span className="badge badge-cancel" style={{ fontSize: '10px' }}>
                         🔥 СРОЧНО

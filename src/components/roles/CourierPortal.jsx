@@ -39,6 +39,7 @@ import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../ser
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendSMSNotification } from '../../services/smsService';
 import { getTelegramBotConfig, notifyOrderPickup, notifyOrderCompleted, notifyOrderCreated } from '../../services/telegramBotService';
+import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -330,9 +331,13 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     setEditModalOrder(null);
   };
 
+  // Pickup Delivery Days state (default 5 days)
+  const [pickupDeliveryDays, setPickupDeliveryDays] = useState(5);
+
   // Open Pickup Modal with initial items
   const openPickupModal = (order) => {
     setPickupModalOrder(order);
+    setPickupDeliveryDays(parseInt(order.deliveryDays, 10) || 5);
     setGpsLocation(order.gpsLocation || '');
     setPickupConditionNotes('');
     setNegotiatedNotes('');
@@ -376,7 +381,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     const fixedTotalAmount = itemsFormatted.reduce((sum, it) => sum + (it.total || 0), 0);
 
     const itemsSummaryStr = pickupItemsList.map(i => `${i.name}: ${i.qty} ${i.unit}`).join(', ');
-    const customNote = `[Забор курьером: ${itemsSummaryStr}. ${pickupConditionNotes ? 'Состояние: ' + pickupConditionNotes : ''} ${negotiatedNotes ? 'Договоренность: ' + negotiatedNotes : ''}]`;
+    const customNote = `[Забор курьером: ${itemsSummaryStr}. Срок доставки: ${pickupDeliveryDays} дн. ${pickupConditionNotes ? 'Состояние: ' + pickupConditionNotes : ''} ${negotiatedNotes ? 'Договоренность: ' + negotiatedNotes : ''}]`;
 
     let assignedId = pickupModalOrder.id;
     if (!assignedId || assignedId === 'Б/Н' || assignedId === '-') {
@@ -395,6 +400,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           ...o,
           id: assignedId,
           status: 'cleaning',
+          deliveryDays: pickupDeliveryDays,
+          pickupDate: new Date().toISOString(),
           itemsCount: totalItemsQty,
           items: itemsFormatted,
           totalAmount: fixedTotalAmount > 0 ? fixedTotalAmount : (o.totalAmount || 0),
@@ -1113,7 +1120,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                     wordBreak: 'break-word'
                   }}
                 >
-                  {/* Row 1: Left Urgency & District, Right Order ID */}
+                  {/* Row 1: Left Urgency & District, Right Order ID & Deadline Badge */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       {order.urgent && (
@@ -1125,9 +1132,12 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                         📍 {order.district || 'Самарканд'}
                       </span>
                     </div>
-                    <span style={{ fontSize: '15px', fontWeight: '900', color: orderId ? '#facc15' : '#94a3b8' }}>
-                      № {orderId ? orderId : 'Б/Н'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <DeliveryDeadlineBadge order={order} />
+                      <span style={{ fontSize: '15px', fontWeight: '900', color: orderId ? '#facc15' : '#94a3b8' }}>
+                        № {orderId ? orderId : 'Б/Н'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Row 2: Courier & Date/Time */}
@@ -1477,6 +1487,25 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 >
                   <Plus size={14} /> Добавить позицию
                 </button>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label" style={{ color: '#facc15', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ⏱️ Срок доставки (дней):
+                </label>
+                <select 
+                  value={pickupDeliveryDays}
+                  onChange={(e) => setPickupDeliveryDays(parseInt(e.target.value, 10))}
+                  className="select-field"
+                  style={{ fontSize: '13.5px', padding: '8px 10px', fontWeight: '800', border: '1.5px solid #facc15', color: '#fff' }}
+                >
+                  <option value={1}>⚡ 1 день (Срочная доставка)</option>
+                  <option value={2}>⚡ 2 дня</option>
+                  <option value={3}>⚡ 3 дня</option>
+                  <option value={4}>4 дня</option>
+                  <option value={5}>📅 5 дней (По умолчанию)</option>
+                  <option value={7}>📅 7 дней</option>
+                </select>
               </div>
 
               <div className="input-group">

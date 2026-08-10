@@ -125,3 +125,58 @@ export const notifyAdminPayment = (order, amount) => {
     role: 'admin'
   });
 };
+
+/**
+ * Checks active orders for overdue deadlines and triggers daily alerts
+ */
+export const checkOverdueOrders = (orders = []) => {
+  if (!Array.isArray(orders) || orders.length === 0) return;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastAlertKey = 'cosmo_crm_last_overdue_alert';
+  const lastAlertDate = localStorage.getItem(lastAlertKey);
+
+  // Avoid spamming alerts if checked already today
+  if (lastAlertDate === todayStr) return;
+
+  const activePending = orders.filter(o => o.status !== 'done' && o.status !== 'cancelled');
+
+  activePending.forEach(o => {
+    const deliveryDays = parseInt(o.deliveryDays, 10) || 5;
+    const startTimestamp = o.pickupDate || o.created_at || o.createdDate;
+    if (!startTimestamp) return;
+
+    let startDate;
+    if (typeof startTimestamp === 'string' && startTimestamp.includes('.')) {
+      const parts = startTimestamp.split(',');
+      const dateParts = parts[0].trim().split('.');
+      if (dateParts.length === 3) {
+        startDate = new Date(parseInt(dateParts[2], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[0], 10));
+      } else {
+        startDate = new Date(startTimestamp);
+      }
+    } else {
+      startDate = new Date(startTimestamp);
+    }
+
+    if (isNaN(startDate.getTime())) return;
+
+    const today = new Date();
+    const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffTime = todayMidnight.getTime() - startMidnight.getTime();
+    const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const remaining = deliveryDays - daysPassed;
+
+    if (remaining < 0) {
+      sendRolePushNotification({
+        title: `🚨 ПРОСРОЧКА ЗАКАЗА #${o.id || o.tempId}`,
+        body: `Заказ просрочен на ${Math.abs(remaining)} дн. (${remaining} дн.)! Клиент: ${o.clientName} (${o.phone || o.clientPhone}). Срочно требуется доставка!`,
+        role: 'all'
+      });
+    }
+  });
+
+  localStorage.setItem(lastAlertKey, todayStr);
+};
+

@@ -31,7 +31,8 @@ import {
   notifyCourierNewOrder, 
   notifyWasherNewItem, 
   notifyDispatcherStatusChange, 
-  notifyAdminPayment 
+  notifyAdminPayment,
+  checkOverdueOrders
 } from './services/notificationService';
 import { 
   notifyOrderCreated, 
@@ -182,23 +183,21 @@ export default function App() {
     });
   };
 
-  // Wrapper for setOrders that updates local state and syncs directly to Supabase DB
+  // Explicit order deletion function
+  const deleteOrder = (orderId) => {
+    if (!orderId) return;
+    setOrdersState(prev => prev.filter(o => 
+      String(o.id) !== String(orderId) && String(o.tempId) !== String(orderId)
+    ));
+    deleteSupabaseOrder(orderId);
+  };
+
+  // Wrapper for setOrders that updates local state and syncs modified/new items directly to Supabase DB
   const setOrders = (updater) => {
     setOrdersState(prevOrders => {
       const nextOrders = typeof updater === 'function' ? updater(prevOrders) : updater;
 
-      // 1. Identify deleted orders and remove them from Supabase DB
-      prevOrders.forEach(prevOrder => {
-        const stillExists = nextOrders.some(n => 
-          (n.id && prevOrder.id && String(n.id) === String(prevOrder.id)) ||
-          (n.tempId && prevOrder.tempId && String(n.tempId) === String(prevOrder.tempId))
-        );
-        if (!stillExists) {
-          deleteSupabaseOrder(prevOrder.id || prevOrder.tempId);
-        }
-      });
-
-      // 2. Identify modified or new orders and persist to Supabase DB & Trigger Telegram Group Notifications
+      // Identify modified or new orders and persist to Supabase DB & Trigger Telegram Group Notifications
       nextOrders.forEach(nextOrder => {
         const prevOrder = prevOrders.find(o => 
           (o.id && nextOrder.id && String(o.id) === String(nextOrder.id)) ||
@@ -265,7 +264,7 @@ export default function App() {
         }
       });
 
-      // 3. Auto-sync clients database
+      // Auto-sync clients database
       setTimeout(() => syncClientsFromOrders(nextOrders), 0);
 
       return nextOrders;
@@ -333,6 +332,7 @@ export default function App() {
 
       if (Array.isArray(dbOrders)) {
         setOrdersState(dbOrders);
+        checkOverdueOrders(dbOrders);
         hasSuccess = true;
       }
       if (Array.isArray(dbUsers) && dbUsers.length > 0) {
