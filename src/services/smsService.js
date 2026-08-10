@@ -126,17 +126,81 @@ export const fetchSMSBalance = async () => {
   return config;
 };
 
-// Send SMS function with trigger support
+// Normalize Uzbekistan phone number to 12 digits (998XXXXXXXXX)
+export const formatUzbekistanPhone = (phoneStr) => {
+  if (!phoneStr) return '';
+  let digits = String(phoneStr).replace(/[^0-9]/g, '');
+
+  // If 9 digits (e.g. 901234567), prepend 998 -> 998901234567
+  if (digits.length === 9) {
+    digits = '998' + digits;
+  }
+
+  return digits;
+};
+
+// Send SMS function with trigger support, CORS proxy fallback & strict status handling
 export const sendSMSNotification = async ({ phone, text, type = 'manual' }) => {
   const config = getSMSConfig();
-  const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+  const cleanPhone = formatUzbekistanPhone(phone);
 
-  let status = 'sent';
-  let message = `📱 СМС успешно отправлено на номер ${phone}!\nТекст: "${text}"`;
+  if (!cleanPhone || cleanPhone.length !== 12 || !cleanPhone.startsWith('998')) {
+    const errorMsg = `⚠️ Неверный номер телефона (${phone}). Номер должен содержать 12 цифр с кодом страны (+998...)`;
+    logSMSHistory({
+      id: `SMS-${Date.now()}`,
+      phone: phone || '-',
+      text: text,
+      status: 'failed',
+      date: new Date().toLocaleString('ru-RU')
+    });
+    return { success: false, message: errorMsg };
+  }
 
-  if (config.token) {
+  if (!config.token) {
+    const errorMsg = `⚠️ СМС не отправлено абоненту (${cleanPhone}): Не заполнен Bearer Token от Eskiz.uz в "Карте Админа" -> "Настройки СМС"`;
+    logSMSHistory({
+      id: `SMS-${Date.now()}`,
+      phone: cleanPhone,
+      text: text,
+      status: 'failed',
+      date: new Date().toLocaleString('ru-RU')
+    });
+    return { success: false, message: errorMsg };
+  }
+
+  let status = 'failed';
+  let message = '';
+
+  const payload = {
+    mobile_phone: cleanPhone,
+    message: text,
+    from: config.fromName || '4546',
+    token: config.token
+  };
+
+  // Try 1: Call CORS-safe backend proxy /api/sms
+  try {
+    const proxyRes = await fetch('/api/sms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (proxyRes.ok) {
+      const data = await proxyRes.json();
+      if (data && data.status !== 'error') {
+        status = 'sent';
+        message = `📱 СМС успешно доставлено на номер ${cleanPhone}! (Eskiz API)`;
+      } else {
+        message = `⚠️ Ошибка Eskiz: ${data?.message || JSON.stringify(data)}`;
+      }
+    } else {
+      message = `⚠️ Ошибка сервера отправки СМС (HTTP ${proxyRes.status})`;
+    }
+  } catch (proxyError) {
+    // Try 2: Fallback to direct fetch (for Native Capacitor Android App where CORS does not apply)
     try {
-      const response = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
+      const directRes = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${config.token}`,
@@ -148,13 +212,16 @@ export const sendSMSNotification = async ({ phone, text, type = 'manual' }) => {
           from: config.fromName || '4546'
         })
       });
-      const data = await response.json();
-      if (!response.ok || data.status === 'error') {
-        status = 'failed';
-        message = `⚠️ Ошибка отправки Eskiz: ${data.message || 'Неверный токен'}`;
+
+      const directData = await directRes.json();
+      if (directRes.ok && directData.status !== 'error') {
+        status = 'sent';
+        message = `📱 СМС успешно доставлено на номер ${cleanPhone}!`;
+      } else {
+        message = `⚠️ Ошибка Eskiz: ${directData?.message || 'Неверный токен'}`;
       }
-    } catch (e) {
-      console.warn("Eskiz call failed:", e);
+    } catch (directError) {
+      message = `⚠️ Не удалось отправить СМС: Ошибка сети или CORS блокировка (${directError.message})`;
     }
   }
 
@@ -168,7 +235,7 @@ export const sendSMSNotification = async ({ phone, text, type = 'manual' }) => {
   // Log in SMS history
   logSMSHistory({
     id: `SMS-${Date.now()}`,
-    phone: phone,
+    phone: cleanPhone,
     text: text,
     status: status,
     date: new Date().toLocaleString('ru-RU')
@@ -179,13 +246,17 @@ export const sendSMSNotification = async ({ phone, text, type = 'manual' }) => {
 
 // Automatic SMS Dispatcher on Status/Payment Changes
 export const triggerAutoSMSForOrder = async (order, prevStatus, prevPaymentStatus) => {
+  if (!order) return;
   const triggers = getSMSTriggers();
   const templates = getSMSTemplates();
+
+  const targetPhone = order.phone || order.clientPhone || order.client_phone || '';
+  if (!targetPhone) return;
 
   const replaceVars = (text) => {
     return (text || '')
       .replace(/{clientName}/g, order.clientName || '')
-      .replace(/{orderId}/g, order.id || '')
+      .replace(/{orderId}/g, order.id || order.tempId || '')
       .replace(/{totalAmount}/g, (order.totalAmount || 0).toLocaleString())
       .replace(/{paidAmount}/g, (order.paidAmount || 0).toLocaleString())
       .replace(/{courier}/g, order.assignedCourier || 'Курьер');
@@ -194,28 +265,28 @@ export const triggerAutoSMSForOrder = async (order, prevStatus, prevPaymentStatu
   // 1. Trigger On Created / Pickup
   if (triggers.onOrderCreated && (!prevStatus || prevStatus === 'new') && (order.status === 'new' || order.status === 'pickup')) {
     const tpl = templates.find(t => t.event === 'onOrderCreated') || defaultTemplates[0];
-    await sendSMSNotification({ phone: order.phone, text: replaceVars(tpl.text), type: 'auto' });
+    await sendSMSNotification({ phone: targetPhone, text: replaceVars(tpl.text), type: 'auto' });
     return;
   }
 
   // 2. Trigger On Cleaning Ready
   if (triggers.onCleaningDone && prevStatus !== 'ready' && order.status === 'ready') {
     const tpl = templates.find(t => t.event === 'onCleaningDone') || defaultTemplates[1];
-    await sendSMSNotification({ phone: order.phone, text: replaceVars(tpl.text), type: 'auto' });
+    await sendSMSNotification({ phone: targetPhone, text: replaceVars(tpl.text), type: 'auto' });
     return;
   }
 
   // 3. Trigger On Delivery Start
   if (triggers.onDeliveryStart && prevStatus !== 'delivery' && order.status === 'delivery') {
     const tpl = templates.find(t => t.event === 'onDeliveryStart') || defaultTemplates[2];
-    await sendSMSNotification({ phone: order.phone, text: replaceVars(tpl.text), type: 'auto' });
+    await sendSMSNotification({ phone: targetPhone, text: replaceVars(tpl.text), type: 'auto' });
     return;
   }
 
   // 4. Trigger On Payment Received
   if (triggers.onPaymentReceived && prevPaymentStatus !== 'paid' && order.paymentStatus === 'paid') {
     const tpl = templates.find(t => t.event === 'onPaymentReceived') || defaultTemplates[3];
-    await sendSMSNotification({ phone: order.phone, text: replaceVars(tpl.text), type: 'auto' });
+    await sendSMSNotification({ phone: targetPhone, text: replaceVars(tpl.text), type: 'auto' });
     return;
   }
 };

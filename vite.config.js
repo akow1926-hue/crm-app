@@ -202,6 +202,40 @@ function crmRealtimeSyncPlugin() {
           }
         }
 
+        // 7. SMS Gateway Proxy: POST /api/sms
+        if (url.startsWith('/api/sms') && req.method === 'POST') {
+          readJson(async (data) => {
+            try {
+              const { mobile_phone, message, from, token } = data;
+              if (!token) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'error', message: 'Bearer token is required' }));
+                return;
+              }
+              const cleanPhone = String(mobile_phone || '').replace(/[^0-9]/g, '');
+              const response = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  mobile_phone: cleanPhone,
+                  message: message,
+                  from: from || '4546'
+                })
+              });
+              const resData = await response.json();
+              res.writeHead(response.status, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(resData));
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ status: 'error', message: err.message || 'SMS proxy error' }));
+            }
+          });
+          return;
+        }
+
         next();
       });
     }
