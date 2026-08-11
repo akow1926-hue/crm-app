@@ -15,7 +15,13 @@ let memoryStore = {
     { id: 'USR-1', username: 'admin', pass: 'admin123', name: 'Администратор', role: 'admin', phone: '+998 90 123 45 67', status: 'active', createdDate: '2026-08-01 10:00' }
   ],
   clients: [],
-  courierLocations: {}
+  courierLocations: {},
+  tgBotConfig: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    channelId: process.env.TELEGRAM_CHAT_ID || '',
+    enabledEvents: { created: true, pickup: true, ready: true, done: true },
+    status: process.env.TELEGRAM_BOT_TOKEN ? 'online' : 'offline'
+  }
 };
 
 export async function getStore() {

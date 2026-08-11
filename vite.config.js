@@ -15,7 +15,14 @@ function loadDb() {
       { id: 'USR-2', username: 'courier', pass: 'courier123', name: 'Алишер Рахимов', role: 'courier', phone: '+998 90 777 88 99', status: 'active', createdDate: '2026-08-01 10:00' }
     ],
     clients: [],
-    courierLocations: {}
+    courierLocations: {},
+    tgBotConfig: {
+      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+      botUsername: 'CosmoGroupNotifier_bot',
+      channelId: '',
+      enabledEvents: { created: true, pickup: true, ready: true, done: true },
+      status: process.env.TELEGRAM_BOT_TOKEN ? 'online' : 'offline'
+    }
   };
 
   try {
@@ -122,6 +129,8 @@ function crmRealtimeSyncPlugin() {
               db.clients = payload;
             } else if (type === 'courier_locations') {
               db.courierLocations = payload;
+            } else if (type === 'tg_bot_config' || type === 'tgBotConfig') {
+              db.tgBotConfig = payload;
             } else if (type === 'courier_location_updated') {
               if (payload?.courierName && payload?.location) {
                 db.courierLocations[payload.courierName] = payload.location;

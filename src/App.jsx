@@ -38,7 +38,8 @@ import {
   notifyOrderCreated, 
   notifyOrderPickup, 
   notifyOrderReady, 
-  notifyOrderCompleted 
+  notifyOrderCompleted,
+  saveTelegramBotConfig
 } from './services/telegramBotService';
 import { 
   getSupabaseOrders, 
@@ -53,6 +54,7 @@ import {
   subscribeToSupabaseRealtime 
 } from './services/supabaseService';
 import { flushOfflineQueue, enqueueOfflineMutation } from './services/offlineQueue';
+import { fetchInitialServerState, subscribeToRealtimeSync, broadcastDataChange } from './services/syncEngine';
 
 export default function App() {
   // Auth Session State
@@ -192,12 +194,24 @@ export default function App() {
     deleteSupabaseOrder(orderId);
   };
 
-  // Wrapper for setOrders that updates local state and syncs modified/new items directly to Supabase DB
+  // Wrapper for setOrders that updates local state and syncs modified/new/deleted items directly to Supabase DB
   const setOrders = (updater) => {
     setOrdersState(prevOrders => {
       const nextOrders = typeof updater === 'function' ? updater(prevOrders) : updater;
 
-      // Identify modified or new orders and persist to Supabase DB & Trigger Telegram Group Notifications
+      // 1. Identify deleted orders and remove from DB
+      prevOrders.forEach(prevOrder => {
+        const stillExists = nextOrders.some(o => 
+          (o.id && prevOrder.id && String(o.id) === String(prevOrder.id)) ||
+          (o.tempId && prevOrder.tempId && String(o.tempId) === String(prevOrder.tempId))
+        );
+        if (!stillExists) {
+          if (prevOrder.id) deleteSupabaseOrder(prevOrder.id);
+          if (prevOrder.tempId && prevOrder.tempId !== prevOrder.id) deleteSupabaseOrder(prevOrder.tempId);
+        }
+      });
+
+      // 2. Identify modified or new orders and persist to Supabase DB & Trigger Telegram Group Notifications
       nextOrders.forEach(nextOrder => {
         const prevOrder = prevOrders.find(o => 
           (o.id && nextOrder.id && String(o.id) === String(nextOrder.id)) ||
@@ -263,6 +277,9 @@ export default function App() {
           }
         }
       });
+
+      // Broadcast changes across gadgets
+      broadcastDataChange('orders', nextOrders);
 
       // Auto-sync clients database
       setTimeout(() => syncClientsFromOrders(nextOrders), 0);
@@ -355,18 +372,35 @@ export default function App() {
     // 1. Load primary state from Supabase Postgres DB
     loadSupabaseData();
 
-    // 2. Subscribe to Supabase Realtime Postgres Changes for instant multi-device updates
+    // 2. Fetch central server state to load saved Telegram Bot token & DB config
+    fetchInitialServerState().then(db => {
+      if (db && db.tgBotConfig && db.tgBotConfig.botToken) {
+        saveTelegramBotConfig(db.tgBotConfig, true);
+      }
+    }).catch(() => {});
+
+    // 3. Subscribe to Supabase Realtime Postgres Changes for instant multi-device updates
     const unsubscribeSupabase = subscribeToSupabaseRealtime((payload) => {
       loadSupabaseData();
     });
 
-    // 3. Periodic 4-second heartbeat sync for Android APK stability over mobile networks
+    // 4. Subscribe to Realtime Cross-Device Events for Telegram Bot config sync
+    const unsubscribeRealtime = subscribeToRealtimeSync((syncData) => {
+      if (syncData.type === 'tg_bot_config' || syncData.type === 'tgBotConfig') {
+        if (syncData.payload && syncData.payload.botToken) {
+          saveTelegramBotConfig(syncData.payload, true);
+        }
+      }
+    });
+
+    // 5. Periodic 4-second heartbeat sync for Android APK stability over mobile networks
     const pollInterval = setInterval(() => {
       loadSupabaseData();
     }, 4000);
 
     return () => {
       if (unsubscribeSupabase) unsubscribeSupabase();
+      if (unsubscribeRealtime) unsubscribeRealtime();
       clearInterval(pollInterval);
     };
   }, []);

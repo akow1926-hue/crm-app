@@ -32,17 +32,38 @@ import {
   Edit3,
   Headphones,
   Home,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendSMSNotification } from '../../services/smsService';
 import { getTelegramBotConfig, notifyOrderPickup, notifyOrderCompleted, notifyOrderCreated } from '../../services/telegramBotService';
+import { deleteSupabaseOrder } from '../../services/supabaseService';
 import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
+
+  // Delete Order Handler for Courier Panel
+  const handleDeleteOrder = (order) => {
+    if (!order) return;
+    const orderLabel = order.id ? `#${order.id}` : `клиента ${order.clientName || 'Без имени'}`;
+    if (window.confirm(`Вы действительно хотите безвозвратно удалить заказ ${orderLabel}?`)) {
+      setOrders(prevOrders => prevOrders.filter(o => {
+        if (order.id && o.id && String(o.id) === String(order.id)) return false;
+        if (order.tempId && o.tempId && String(o.tempId) === String(order.tempId)) return false;
+        if (o === order) return false;
+        return true;
+      }));
+
+      if (order.id) deleteSupabaseOrder(order.id);
+      if (order.tempId && order.tempId !== order.id) deleteSupabaseOrder(order.tempId);
+
+      alert(`Заказ ${orderLabel} успешно удален из системы!`);
+    }
+  };
 
   const getNextSequentialId = () => {
     if (!orders || orders.length === 0) return '5254';
@@ -1246,8 +1267,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                     </span>
                   </div>
 
-                  {/* Row 9: 4 Square Action Buttons [ ⇄ ] [ ✓ ] [ ✏️ ] [ 🧾 ] */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                  {/* Row 9: 5 Square Action Buttons [ ⇄ ] [ ✓ ] [ ✏️ ] [ 🧾 ] [ 🗑️ ] */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px', marginTop: '4px' }}>
                     {/* 1. Reassign Driver */}
                     <button 
                       onClick={() => setReassignModalOrder(order)} 
@@ -1338,9 +1359,9 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                       onClick={() => handlePrintReceipt(order)}
                       className="btn"
                       style={{
-                        background: 'rgba(239, 68, 68, 0.15)',
-                        border: '1px solid rgba(239, 68, 68, 0.35)',
-                        color: '#f87171',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        color: '#38bdf8',
                         height: '36px',
                         padding: '0',
                         borderRadius: '8px',
@@ -1352,6 +1373,27 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                       title="Чек заказа"
                     >
                       <Printer size={15} />
+                    </button>
+
+                    {/* 5. Delete Order */}
+                    <button 
+                      onClick={() => handleDeleteOrder(order)}
+                      className="btn"
+                      style={{
+                        background: 'rgba(244, 63, 94, 0.15)',
+                        border: '1px solid rgba(244, 63, 94, 0.4)',
+                        color: '#f87171',
+                        height: '36px',
+                        padding: '0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Удалить заказ из системы"
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>
@@ -1996,7 +2038,19 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const target = editModalOrder;
+                    setEditModalOrder(null);
+                    handleDeleteOrder(target);
+                  }} 
+                  className="btn" 
+                  style={{ background: 'rgba(244, 63, 94, 0.2)', border: '1px solid #f43f5e', color: '#f87171', fontWeight: '700', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Trash2 size={15} /> Удалить заказ
+                </button>
                 <button type="button" onClick={() => setEditModalOrder(null)} className="btn btn-secondary" style={{ flex: 1 }}>
                   Отмена
                 </button>

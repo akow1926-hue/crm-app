@@ -125,7 +125,9 @@ export function getTelegramBotConfig() {
   };
 }
 
-export function saveTelegramBotConfig(config) {
+import { broadcastDataChange } from './syncEngine.js';
+
+export function saveTelegramBotConfig(config, skipBroadcast = false) {
   try {
     const normalizedChatId = normalizeChatId(config.channelId);
     const cleanToken = (config.botToken || '').trim();
@@ -155,6 +157,10 @@ export function saveTelegramBotConfig(config) {
     if (typeof window !== 'undefined') {
       window.__COSMO_TG_CONFIG = payload;
       window.dispatchEvent(new CustomEvent('tg_bot_config_updated', { detail: payload }));
+    }
+
+    if (!skipBroadcast) {
+      broadcastDataChange('tg_bot_config', payload);
     }
 
     return true;
