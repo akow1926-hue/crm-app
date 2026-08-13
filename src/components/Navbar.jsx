@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck, Users, Tag } from 'lucide-react';
+import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck, Users, Tag, Sun, Moon } from 'lucide-react';
 
-export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout, activeTab, setActiveTab }) {
+export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout, activeTab, setActiveTab, theme, toggleTheme }) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -80,6 +80,18 @@ export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, no
           <Clock size={14} color="var(--accent-secondary)" />
           <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{time || '19:16:00'}</span>
         </div>
+
+        {/* Theme Switcher (Light / Dark Mode) */}
+        {toggleTheme && (
+          <button 
+            onClick={toggleTheme}
+            className="btn-icon" 
+            style={{ width: '38px', height: '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={theme === 'dark' ? "Переключить на дневную тему" : "Переключить на тёмную тему"}
+          >
+            {theme === 'dark' ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
+          </button>
+        )}
 
         {/* Notifications Center */}
         <button 

@@ -698,12 +698,12 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
                             <label className="input-label" style={{ fontSize: '11px' }}>Ширина (м)</label>
                             <input 
                               type="number" 
-                              step="0.1"
+                              step="0.01"
                               required
-                              value={item.width}
+                              value={item.width ?? ''}
                               onChange={(e) => {
                                 const next = [...measuredItems];
-                                next[idx].width = parseFloat(e.target.value) || 0;
+                                next[idx].width = e.target.value;
                                 setMeasuredItems(next);
                               }}
                               className="input-field"
@@ -715,12 +715,12 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
                             <label className="input-label" style={{ fontSize: '11px' }}>Длина (м)</label>
                             <input 
                               type="number" 
-                              step="0.1"
+                              step="0.01"
                               required
-                              value={item.length}
+                              value={item.length ?? ''}
                               onChange={(e) => {
                                 const next = [...measuredItems];
-                                next[idx].length = parseFloat(e.target.value) || 0;
+                                next[idx].length = e.target.value;
                                 setMeasuredItems(next);
                               }}
                               className="input-field"
@@ -731,12 +731,12 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
                           <div className="input-group">
                             <label className="input-label" style={{ fontSize: '11px' }}>Ставка (сум/{item.unit})</label>
                             <input 
-                              type="number"
+                              type="number" 
                               required
-                              value={item.price}
+                              value={item.price ?? ''}
                               onChange={(e) => {
                                 const next = [...measuredItems];
-                                next[idx].price = parseFloat(e.target.value) || 0;
+                                next[idx].price = e.target.value;
                                 setMeasuredItems(next);
                               }}
                               className="input-field"
@@ -758,10 +758,10 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
                               type="number" 
                               min="1"
                               required
-                              value={item.qty}
+                              value={item.qty ?? ''}
                               onChange={(e) => {
                                 const next = [...measuredItems];
-                                next[idx].qty = parseInt(e.target.value) || 1;
+                                next[idx].qty = e.target.value;
                                 setMeasuredItems(next);
                               }}
                               className="input-field"
@@ -774,10 +774,10 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
                             <input 
                               type="number"
                               required
-                              value={item.price}
+                              value={item.price ?? ''}
                               onChange={(e) => {
                                 const next = [...measuredItems];
-                                next[idx].price = parseFloat(e.target.value) || 0;
+                                next[idx].price = e.target.value;
                                 setMeasuredItems(next);
                               }}
                               className="input-field"

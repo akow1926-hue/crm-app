@@ -72,41 +72,77 @@ export default class ErrorBoundary extends React.Component {
 
             {this.state.error && (
               <div style={{
-                background: 'rgba(0,0,0,0.4)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(0,0,0,0.6)',
+                border: '1px solid rgba(244, 63, 94, 0.4)',
                 borderRadius: '8px',
-                padding: '10px 14px',
+                padding: '12px 14px',
                 fontSize: '11px',
-                color: '#f43f5e',
+                color: '#f87171',
                 fontFamily: 'monospace',
                 maxWidth: '100%',
-                overflowX: 'auto',
-                textAlign: 'left'
+                maxHeight: '200px',
+                overflowY: 'auto',
+                textAlign: 'left',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
               }}>
-                {String(this.state.error.message || this.state.error)}
+                <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#fff' }}>
+                  {String(this.state.error.message || this.state.error)}
+                </div>
+                {this.state.error.stack && <div>{this.state.error.stack}</div>}
+                {this.state.errorInfo?.componentStack && (
+                  <div style={{ marginTop: '8px', color: '#94a3b8' }}>
+                    {this.state.errorInfo.componentStack}
+                  </div>
+                )}
               </div>
             )}
 
-            <button
-              onClick={this.handleReload}
-              style={{
-                background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
-                color: '#fff',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '10px',
-                fontWeight: '700',
-                fontSize: '14px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginTop: '8px',
-                boxShadow: '0 4px 14px rgba(6, 182, 212, 0.4)'
-              }}
-            >
-              <RefreshCw size={16} /> Перезагрузить страницу
-            </button>
+            <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap', marginTop: '8px' }}>
+              <button
+                onClick={this.handleReload}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '12px 18px',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(6, 182, 212, 0.4)'
+                }}
+              >
+                <RefreshCw size={16} /> Перезагрузить страницу
+              </button>
+
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('cosmo_crm_user');
+                  } catch (e) {}
+                  window.location.reload();
+                }}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  padding: '12px 18px',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                Сбросить сессию и войти
+              </button>
+            </div>
           </div>
         </div>
       );

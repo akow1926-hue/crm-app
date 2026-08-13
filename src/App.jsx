@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -64,12 +65,63 @@ const PageLoader = () => (
   </div>
 );
 
+const OfflineBanner = ({ isDbConnected, onRetry }) => !isDbConnected ? (
+  <div style={{
+    background: 'rgba(244, 63, 94, 0.25)',
+    border: '1px solid #f43f5e',
+    color: '#f87171',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    marginBottom: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    fontWeight: '600'
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span>⚠️</span>
+      <span>Нет подключения к Интернету или базе данных. Приложение работает только с онлайн базой данных!</span>
+    </div>
+    <button 
+      onClick={onRetry} 
+      style={{
+        background: '#f43f5e',
+        color: '#fff',
+        border: 'none',
+        padding: '4px 10px',
+        borderRadius: '6px',
+        fontSize: '11px',
+        cursor: 'pointer',
+        fontWeight: '700'
+      }}
+    >
+      Повторить
+    </button>
+  </div>
+) : null;
+
 export default function App() {
   // Auth Session State
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = localStorage.getItem('cosmo_crm_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  // Theme state: 'dark' | 'light'
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('cosmo_crm_theme');
+    return saved || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('cosmo_crm_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -141,7 +193,10 @@ export default function App() {
           );
 
           const totalOrdersCount = clientOrders.length;
-          const totalLtv = clientOrders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || 0)), 0);
+          const totalLtv = clientOrders.reduce((sum, o) => {
+            const paid = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
+            return sum + paid;
+          }, 0);
 
           let tier = 'Standard';
           let discountPercent = 0;
@@ -401,10 +456,12 @@ export default function App() {
       }
     });
 
-    // 5. Periodic 4-second heartbeat sync for Android APK stability over mobile networks
+    // 5. Light background heartbeat sync (Supabase WebSocket handles instant realtime updates)
     const pollInterval = setInterval(() => {
-      loadSupabaseData();
-    }, 4000);
+      if (typeof document !== 'undefined' && !document.hidden && navigator.onLine) {
+        loadSupabaseData();
+      }
+    }, 20000);
 
     return () => {
       if (unsubscribeSupabase) unsubscribeSupabase();
@@ -440,28 +497,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Native Android Back Button Handler via Capacitor
+  // Native Android Back Button Handler via Capacitor (Only on native devices)
   useEffect(() => {
     let listenerHandler = null;
     try {
-      CapApp.addListener('backButton', ({ canGoBack }) => {
-        if (isNewOrderModalOpen || selectedOrder) {
-          setIsNewOrderModalOpen(false);
-          setSelectedOrder(null);
-        } else if (isNotificationsOpen) {
-          setIsNotificationsOpen(false);
-        } else if (!canGoBack) {
-          CapApp.exitApp();
-        }
-      }).then(handler => {
-        listenerHandler = handler;
-      }).catch(() => {});
+      if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform() && CapApp && typeof CapApp.addListener === 'function') {
+        CapApp.addListener('backButton', ({ canGoBack }) => {
+          if (isNewOrderModalOpen || selectedOrder) {
+            setIsNewOrderModalOpen(false);
+            setSelectedOrder(null);
+          } else if (isNotificationsOpen) {
+            setIsNotificationsOpen(false);
+          } else if (!canGoBack && typeof CapApp.exitApp === 'function') {
+            CapApp.exitApp();
+          }
+        }).then(handler => {
+          listenerHandler = handler;
+        }).catch(() => {});
+      }
     } catch (err) {}
 
     return () => {
-      if (listenerHandler && typeof listenerHandler.remove === 'function') {
-        listenerHandler.remove();
-      }
+      try {
+        if (listenerHandler && typeof listenerHandler.remove === 'function') {
+          listenerHandler.remove();
+        }
+      } catch (e) {}
     };
   }, [isNewOrderModalOpen, selectedOrder, isNotificationsOpen]);
 
@@ -517,48 +578,12 @@ export default function App() {
     return <AuthModal onLogin={handleLogin} registeredUsers={registeredUsers} onRegisterUser={handleRegisterUser} />;
   }
 
-  const OfflineBanner = () => !isDbConnected ? (
-    <div style={{
-      background: 'rgba(244, 63, 94, 0.25)',
-      border: '1px solid #f43f5e',
-      color: '#f87171',
-      padding: '12px 16px',
-      borderRadius: '10px',
-      marginBottom: '14px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      fontSize: '13px',
-      fontWeight: '600'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span>⚠️</span>
-        <span>Нет подключения к Интернету или базе данных Spacebase (Supabase). Приложение работает только с онлайн базой данных!</span>
-      </div>
-      <button 
-        onClick={loadSupabaseData} 
-        style={{
-          background: '#f43f5e',
-          color: '#fff',
-          border: 'none',
-          padding: '4px 10px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          cursor: 'pointer',
-          fontWeight: '700'
-        }}
-      >
-        Повторить
-      </button>
-    </div>
-  ) : null;
-
   // Dedicated Window based on User Role:
   // 1. Courier Portal (Отдельный мобильный кабинет Курьера)
   if (currentUser.role === 'courier') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
-        <OfflineBanner />
+        <OfflineBanner isDbConnected={isDbConnected} onRetry={loadSupabaseData} />
         <Suspense fallback={<PageLoader />}>
           <CourierPortal 
             orders={orders} 
@@ -576,7 +601,7 @@ export default function App() {
   if (currentUser.role === 'washer') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
-        <OfflineBanner />
+        <OfflineBanner isDbConnected={isDbConnected} onRetry={loadSupabaseData} />
         <Suspense fallback={<PageLoader />}>
           <WasherPortal 
             orders={orders} 
@@ -594,7 +619,7 @@ export default function App() {
   if (currentUser.role === 'dispatcher') {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
-        <OfflineBanner />
+        <OfflineBanner isDbConnected={isDbConnected} onRetry={loadSupabaseData} />
         <Suspense fallback={<PageLoader />}>
           <DispatcherPortal 
             orders={orders} 
@@ -629,6 +654,8 @@ export default function App() {
         currentUser={currentUser} 
         isCollapsed={isSidebarCollapsed} 
         setIsCollapsed={setIsSidebarCollapsed} 
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       {/* Main Container */}
@@ -643,10 +670,12 @@ export default function App() {
           onLogout={handleLogout}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
 
         <main className="page-wrapper">
-          <OfflineBanner />
+          <OfflineBanner isDbConnected={isDbConnected} onRetry={loadSupabaseData} />
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'dashboard' && (
               <DashboardView 

@@ -105,7 +105,7 @@ export default function CalculatorView({ onOpenNewOrderWithPreset }) {
                       type="number"
                       min="0.1"
                       step="0.5"
-                      value={row.qty}
+                      value={row.qty ?? ''}
                       onChange={(e) => updateRow(index, 'qty', e.target.value)}
                       className="input-field"
                     />

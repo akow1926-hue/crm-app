@@ -169,10 +169,10 @@ export default function FinanceSalaryView({
   const totalAdvancesGiven = staffSalaryData.reduce((sum, s) => sum + s.totalAdvancesPaid, 0);
   const totalRemainingPayrollDue = staffSalaryData.reduce((sum, s) => sum + s.balanceDue, 0);
 
-  // Overall Order Revenue & Debts
-  const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || o.agreedAmount || 0)), 0);
-  const paidRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.paidAmount || (o.paymentStatus === 'paid' ? o.totalAmount : 0) || 0)), 0);
-  const debtTotal = Math.max(0, totalRevenue - paidRevenue);
+  // Overall Order Revenue & Debts (Revenue is strictly from paid orders)
+  const totalCalculatedBilling = orders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || 0)), 0);
+  const paidRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0), 0);
+  const debtTotal = Math.max(0, totalCalculatedBilling - paidRevenue);
 
   // Debtor Orders
   const debtorOrders = orders.filter(o => {

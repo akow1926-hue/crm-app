@@ -30,7 +30,7 @@ export default function ServicesCatalogView() {
       if (item.id === id) {
         return { 
           ...item, 
-          [field]: field === 'price' ? (parseFloat(value) || 0) : value 
+          [field]: value 
         };
       }
       return item;
@@ -57,7 +57,11 @@ export default function ServicesCatalogView() {
   };
 
   const handleSaveCatalog = () => {
-    localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(catalog));
+    const formattedCatalog = catalog.map(s => ({
+      ...s,
+      price: parseFloat(s.price) || 0
+    }));
+    localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(formattedCatalog));
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
     alert('✅ Прайс-лист и единица измерения для всех услуг сохранены! Курьер и цех теперь видят эти настройки.');
@@ -272,7 +276,7 @@ export default function ServicesCatalogView() {
                 <input 
                   type="number"
                   required
-                  value={svc.price}
+                  value={svc.price ?? ''}
                   onChange={(e) => handleUpdateItem(svc.id, 'price', e.target.value)}
                   className="input-field"
                   style={{ fontSize: '14px', fontWeight: '800', color: '#10b981', borderColor: '#10b981' }}

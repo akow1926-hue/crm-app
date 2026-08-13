@@ -21,7 +21,8 @@ import {
   Headphones,
   Home,
   Send,
-  Trash2
+  Trash2,
+  Navigation
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
@@ -31,6 +32,7 @@ import { getTelegramBotConfig, notifyOrderPickup, notifyOrderCompleted, notifyOr
 import { deleteSupabaseOrder } from '../../services/supabaseService';
 import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 import { printOrderReceipt } from '../../utils/printReceipt';
+import RouteOptimizerModal from '../RouteOptimizerModal';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -106,6 +108,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [copiedOrderId, setCopiedOrderId] = useState(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
   const [editModalOrder, setEditModalOrder] = useState(null);
+  const [isRouteOptimizerOpen, setIsRouteOptimizerOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({
     id: '',
     clientName: '',
@@ -449,8 +452,9 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     e.preventDefault();
     if (!deliveryModalOrder) return;
 
-    const expectedSum = deliveryModalOrder.totalAmount || deliveryModalOrder.agreedAmount || 0;
-    if (paidAmount < expectedSum && !underpaidReason.trim()) {
+    const expectedSum = parseFloat(deliveryModalOrder.totalAmount || deliveryModalOrder.agreedAmount || 0);
+    const numericPaidAmount = parseFloat(paidAmount) || 0;
+    if (numericPaidAmount < expectedSum && !underpaidReason.trim()) {
       alert('Пожалуйста, укажите причину неполной оплаты!');
       return;
     }
@@ -463,8 +467,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         const updated = {
           ...o,
           status: 'done',
-          paymentStatus: paidAmount >= expectedSum ? 'paid' : 'partial',
-          paidAmount: paidAmount,
+          paymentStatus: numericPaidAmount >= expectedSum ? 'paid' : 'partial',
+          paidAmount: numericPaidAmount,
           paymentType: payTypeLabel,
           underpaidReason: underpaidReason || '-'
         };
@@ -475,9 +479,9 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     }));
 
     // Trigger Telegram Group Notification (Case 4: Закрытие заказа)
-    notifyOrderCompleted(updatedCompletedOrder || { ...deliveryModalOrder, status: 'done', paidAmount, paymentType: payTypeLabel }, {
+    notifyOrderCompleted(updatedCompletedOrder || { ...deliveryModalOrder, status: 'done', paidAmount: numericPaidAmount, paymentType: payTypeLabel }, {
       courier: courierName,
-      paidAmount: paidAmount,
+      paidAmount: numericPaidAmount,
       paymentType: payTypeLabel,
       underpaidReason: underpaidReason
     }).catch(err => console.warn('Telegram completed notify error:', err));
@@ -651,7 +655,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               <Send size={14} /> Telegram Группа
             </a>
           )}
-          <button onClick={onLogout} className="btn btn-secondary" style={{ fontSize: '12px', color: '#f43f5e', padding: '8px 14px', borderRadius: '10px' }}>
+          <button 
+            onClick={() => {
+              try {
+                stopContinuousGpsTracking();
+              } catch (e) {}
+              if (onLogout) onLogout();
+            }} 
+            className="btn btn-secondary" 
+            style={{ fontSize: '12px', color: '#f43f5e', padding: '8px 14px', borderRadius: '10px' }}
+          >
             <LogOut size={15} /> Выйти
           </button>
         </div>
@@ -697,40 +710,62 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         </button>
       </div>
 
-      {/* Filter Scope Switcher: My vs All */}
-      <div style={{ display: 'flex', gap: '6px', background: 'rgba(15, 23, 42, 0.7)', padding: '6px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+      {/* Filter Scope Switcher: My vs All + Route Optimizer Trigger */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
-          onClick={() => setScopeFilter('my')}
-          className="btn"
+          onClick={() => setIsRouteOptimizerOpen(true)}
+          className="btn btn-primary"
           style={{
-            flex: 1,
-            padding: '9px 12px',
-            fontSize: '12.5px',
-            fontWeight: '700',
-            borderRadius: '10px',
-            background: scopeFilter === 'my' ? 'linear-gradient(135deg, #facc15 0%, #eab308 100%)' : 'transparent',
-            color: scopeFilter === 'my' ? '#070d1e' : 'var(--text-muted)',
-            boxShadow: scopeFilter === 'my' ? '0 4px 12px rgba(250, 204, 21, 0.3)' : 'none'
+            width: '100%',
+            padding: '12px 16px',
+            fontSize: '14px',
+            fontWeight: '900',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
           }}
         >
-          📌 Назначенные мне ({orders.filter(o => (o.assignedCourier === courierName || o.assignedCourier === 'Все курьеры' || o.assignedCourier === 'Не назначен' || !o.assignedCourier) && o.status !== 'done').length})
+          <Navigation size={18} /> 🗺️ Умный Оптимизатор Маршрута (Кратчайший путь)
         </button>
-        <button
-          onClick={() => setScopeFilter('all')}
-          className="btn"
-          style={{
-            flex: 1,
-            padding: '9px 12px',
-            fontSize: '12.5px',
-            fontWeight: '700',
-            borderRadius: '10px',
-            background: scopeFilter === 'all' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'transparent',
-            color: scopeFilter === 'all' ? '#ffffff' : 'var(--text-muted)',
-            boxShadow: scopeFilter === 'all' ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
-          }}
-        >
-          🌐 Все заказы CRM ({orders.filter(o => o.status !== 'done').length})
-        </button>
+
+        <div style={{ display: 'flex', gap: '6px', background: 'rgba(15, 23, 42, 0.7)', padding: '6px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+          <button
+            onClick={() => setScopeFilter('my')}
+            className="btn"
+            style={{
+              flex: 1,
+              padding: '9px 12px',
+              fontSize: '12.5px',
+              fontWeight: '700',
+              borderRadius: '10px',
+              background: scopeFilter === 'my' ? 'linear-gradient(135deg, #facc15 0%, #eab308 100%)' : 'transparent',
+              color: scopeFilter === 'my' ? '#070d1e' : 'var(--text-muted)',
+              boxShadow: scopeFilter === 'my' ? '0 4px 12px rgba(250, 204, 21, 0.3)' : 'none'
+            }}
+          >
+            📌 Назначенные мне ({orders.filter(o => (o.assignedCourier === courierName || o.assignedCourier === 'Все курьеры' || o.assignedCourier === 'Не назначен' || !o.assignedCourier) && o.status !== 'done').length})
+          </button>
+          <button
+            onClick={() => setScopeFilter('all')}
+            className="btn"
+            style={{
+              flex: 1,
+              padding: '9px 12px',
+              fontSize: '12.5px',
+              fontWeight: '700',
+              borderRadius: '10px',
+              background: scopeFilter === 'all' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'transparent',
+              color: scopeFilter === 'all' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: scopeFilter === 'all' ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+            }}
+          >
+            🌐 Все заказы CRM ({orders.filter(o => o.status !== 'done').length})
+          </button>
+        </div>
       </div>
 
       {/* Navigation SubTabs */}
@@ -1023,10 +1058,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                           type="number"
                           min="1"
                           required
-                          value={item.qty}
+                          value={item.qty ?? ''}
                           onChange={(e) => {
                             const nextItems = [...streetOrder.items];
-                            nextItems[idx].qty = parseInt(e.target.value) || 1;
+                            nextItems[idx].qty = e.target.value;
                             setStreetOrder({ ...streetOrder, items: nextItems });
                           }}
                           className="input-field"
@@ -1039,10 +1074,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                         <input 
                           type="number"
                           required
-                          value={item.price}
+                          value={item.price ?? ''}
                           onChange={(e) => {
                             const nextItems = [...streetOrder.items];
-                            nextItems[idx].price = parseFloat(e.target.value) || 0;
+                            nextItems[idx].price = e.target.value;
                             setStreetOrder({ ...streetOrder, items: nextItems });
                           }}
                           className="input-field"
@@ -1481,12 +1516,12 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                             <label className="input-label" style={{ fontSize: '11px' }}>Кол-во ({item.unit}) *</label>
                             <input 
                               type="number" 
-                              min="1"
+                              min="1" 
                               required
-                              value={item.qty}
+                              value={item.qty ?? ''}
                               onChange={(e) => {
                                 const nextList = [...pickupItemsList];
-                                nextList[idx].qty = parseInt(e.target.value) || 1;
+                                nextList[idx].qty = e.target.value;
                                 setPickupItemsList(nextList);
                               }}
                               className="input-field"
@@ -1498,10 +1533,10 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                             <label className="input-label" style={{ fontSize: '11px' }}>Ставка ({item.unit})</label>
                             <input 
                               type="number"
-                              value={item.price}
+                              value={item.price ?? ''}
                               onChange={(e) => {
                                 const nextList = [...pickupItemsList];
-                                nextList[idx].price = parseFloat(e.target.value) || 0;
+                                nextList[idx].price = e.target.value;
                                 setPickupItemsList(nextList);
                               }}
                               className="input-field"
@@ -1628,8 +1663,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 <input 
                   type="number" 
                   required
-                  value={paidAmount} 
-                  onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} 
+                  value={paidAmount ?? ''} 
+                  onChange={(e) => setPaidAmount(e.target.value)} 
                   className="input-field" 
                   style={{ fontSize: '16px', fontWeight: '800' }}
                 />
@@ -2095,6 +2130,19 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL 7: Smart Route Optimizer Modal */}
+      {isRouteOptimizerOpen && (
+        <RouteOptimizerModal
+          orders={scopeFilter === 'my' 
+            ? orders.filter(o => (o.assignedCourier === courierName || o.assignedCourier === 'Все курьеры' || o.assignedCourier === 'Не назначен' || !o.assignedCourier) && o.status !== 'done')
+            : orders.filter(o => o.status !== 'done')
+          }
+          onClose={() => setIsRouteOptimizerOpen(false)}
+          courierName={courierName}
+          courierGps={liveGpsData}
+        />
       )}
     </div>
   );

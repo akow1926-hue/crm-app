@@ -148,7 +148,10 @@ export default function ClientsView({ clients, setClients, searchQuery, onOpenNe
           const totalOrdersCount = Math.max(client.totalOrders || 0, clientLiveOrders.length);
           const totalLtvSum = Math.max(
             client.ltv || 0, 
-            clientLiveOrders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || 0)), 0)
+            clientLiveOrders.reduce((sum, o) => {
+              const paid = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
+              return sum + paid;
+            }, 0)
           );
 
           return (

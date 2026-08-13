@@ -131,13 +131,13 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
         serviceId: selectedSvc?.id || nextItems[idx].serviceId,
         name: value,
         unit: selectedSvc?.unit || 'шт',
-        price: selectedSvc?.price || nextItems[idx].price
+        price: selectedSvc?.price !== undefined ? selectedSvc.price : nextItems[idx].price
       };
     } else {
       nextItems[idx][field] = value;
     }
 
-    const q = parseInt(nextItems[idx].qty) || 1;
+    const q = parseFloat(nextItems[idx].qty) || 0;
     const p = parseFloat(nextItems[idx].price) || 0;
     if (nextItems[idx].unit === 'шт' || nextItems[idx].unit === 'комплект' || nextItems[idx].unit === 'место') {
       nextItems[idx].total = q * p;
@@ -158,11 +158,24 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const formattedItems = formData.items.map(it => {
+      const q = parseFloat(it.qty) || 1;
+      const p = parseFloat(it.price) || 0;
+      const isFixed = it.unit === 'шт' || it.unit === 'комплект' || it.unit === 'место';
+      return {
+        ...it,
+        qty: q,
+        price: p,
+        total: isFixed ? q * p : 0
+      };
+    });
     // Calculate total fixed items amount
-    const fixedTotal = formData.items.reduce((sum, it) => sum + (it.total || 0), 0);
+    const fixedTotal = formattedItems.reduce((sum, it) => sum + (it.total || 0), 0);
     const updatedOrder = {
       ...formData,
-      totalAmount: fixedTotal > 0 ? fixedTotal : (formData.totalAmount || 0)
+      items: formattedItems,
+      totalAmount: fixedTotal > 0 ? fixedTotal : (parseFloat(formData.totalAmount) || 0),
+      paidAmount: parseFloat(formData.paidAmount) || 0
     };
     onSave(updatedOrder);
   };
@@ -408,7 +421,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
                         type="number"
                         min="1"
                         required
-                        value={item.qty}
+                        value={item.qty ?? ''}
                         onChange={(e) => updateItemRow(idx, 'qty', e.target.value)}
                         className="input-field"
                         style={{ fontSize: '12.5px', padding: '6px 8px', fontWeight: '800' }}
@@ -420,7 +433,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
                       <input 
                         type="number"
                         required
-                        value={item.price}
+                        value={item.price ?? ''}
                         onChange={(e) => updateItemRow(idx, 'price', e.target.value)}
                         className="input-field"
                         style={{ fontSize: '12.5px', padding: '6px 8px', color: '#34d399', fontWeight: '800' }}

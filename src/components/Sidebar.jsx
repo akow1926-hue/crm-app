@@ -17,10 +17,12 @@ import {
   MapPin,
   BarChart3,
   Smartphone,
-  Tag
+  Tag,
+  Sun,
+  Moon
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollapsed, setIsCollapsed }) {
+export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollapsed, setIsCollapsed, theme, toggleTheme }) {
   const menuCategories = [
     {
       title: 'ОСНОВНОЕ',
@@ -197,12 +199,49 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
         ))}
       </nav>
 
+      {/* Theme Toggle Button */}
+      {toggleTheme && (
+        <div style={{ padding: isCollapsed ? '8px' : '8px 12px', borderTop: '1px solid var(--border-color)' }}>
+          <button
+            onClick={toggleTheme}
+            className="btn btn-secondary"
+            style={{
+              width: '100%',
+              padding: isCollapsed ? '8px 0' : '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed ? 'center' : 'space-between',
+              gap: '8px',
+              fontSize: '12px',
+              fontWeight: '700',
+              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)'
+            }}
+            title={theme === 'dark' ? "Переключить на дневную тему" : "Переключить на тёмную тему"}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {theme === 'dark' ? <Sun size={16} color="#f59e0b" /> : <Moon size={16} color="#6366f1" />}
+              {!isCollapsed && (
+                <span>{theme === 'dark' ? 'Дневная тема' : 'Ночная тема'}</span>
+              )}
+            </div>
+            {!isCollapsed && (
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: '4px' }}>
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* System Status Footer */}
       {!isCollapsed && (
         <div style={{
-          padding: '14px 16px',
+          padding: '12px 16px',
           borderTop: '1px solid var(--border-color)',
-          background: 'rgba(0, 0, 0, 0.2)',
+          background: 'rgba(0, 0, 0, 0.1)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px'

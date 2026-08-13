@@ -19,6 +19,7 @@ import { getCourierLocations } from '../services/gpsTrackingService';
 import { getActiveCouriers } from '../services/staffHelper';
 import { subscribeToRealtimeSync } from '../services/syncEngine';
 import { getSupabaseCourierLocations } from '../services/supabaseService';
+import RouteOptimizerModal from './RouteOptimizerModal';
 
 export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -26,6 +27,7 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
   const [selectedCourier, setSelectedCourier] = useState('all');
   const [searchMapQuery, setSearchMapQuery] = useState('');
   const [showRouteLine, setShowRouteLine] = useState(true);
+  const [isRouteOptimizerOpen, setIsRouteOptimizerOpen] = useState(false);
 
   // Real Workshop & Cleaning Plant Coordinates (Новая локация Цеха)
   const samarkandCenter = [39.588238, 66.928319];
@@ -64,7 +66,7 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
 
   useEffect(() => {
     syncLiveGpsPositions();
-    const interval = setInterval(syncLiveGpsPositions, 3000);
+    const interval = setInterval(syncLiveGpsPositions, 15000);
     const handleLocationEvent = () => syncLiveGpsPositions();
     window.addEventListener('courier_location_updated', handleLocationEvent);
 
@@ -307,6 +309,24 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
           >
             <Route size={16} color={showRouteLine ? 'var(--accent-secondary)' : 'var(--text-dim)'} />
           </button>
+
+          <button
+            onClick={() => setIsRouteOptimizerOpen(true)}
+            className="btn btn-primary"
+            style={{
+              height: '32px',
+              padding: '0 12px',
+              fontSize: '12px',
+              fontWeight: '800',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Zap size={14} /> ⚡ Оптимизировать Маршрут
+          </button>
         </div>
       </div>
 
@@ -456,15 +476,27 @@ export default function YandexLogisticsMap({ orders, setOrders, setSelectedOrder
             </div>
 
             <button 
-              onClick={() => alert('Маршрут по Самарканду успешно отправлен курьеру Алишеру в Telegram!')} 
-              className="btn btn-secondary"
-              style={{ fontSize: '12px', padding: '8px 12px' }}
+              onClick={() => setIsRouteOptimizerOpen(true)} 
+              className="btn btn-primary"
+              style={{ fontSize: '12px', padding: '8px 12px', background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)', fontWeight: '800' }}
             >
-              <Navigation size={14} /> Передать маршрут Курьеру
+              <Zap size={14} /> Открыть Умный Оптимизатор
             </button>
           </div>
         </div>
       </div>
+
+      {/* Smart Route Optimizer Modal for Admin / Dispatcher */}
+      {isRouteOptimizerOpen && (
+        <RouteOptimizerModal
+          orders={selectedCourier !== 'all' 
+            ? orders.filter(o => o.assignedCourier === selectedCourier && o.status !== 'done')
+            : orders.filter(o => o.status !== 'done')
+          }
+          onClose={() => setIsRouteOptimizerOpen(false)}
+          courierName={selectedCourier !== 'all' ? selectedCourier : 'Все курьеры'}
+        />
+      )}
     </div>
   );
 }

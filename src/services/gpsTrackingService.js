@@ -42,9 +42,12 @@ export async function requestGpsPermission() {
   return 'geolocation' in navigator;
 }
 
-// Save location update
+// Save location update with smart throttling to prevent UI lag
+let lastSupabasePushTime = 0;
+let lastBroadcastTime = 0;
+
 export function updateCourierLocation(courierName, positionData) {
-  const currentMap = getCourierLocations();
+  const now = Date.now();
   const timestamp = new Date().toISOString();
   
   const updatedLocation = {
@@ -60,34 +63,39 @@ export function updateCourierLocation(courierName, positionData) {
     isOnline: true
   };
 
-  currentMap[courierName] = updatedLocation;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentMap));
+  // 1. Throttled Local Storage & Broadcast (max once per 3.5 seconds)
+  if (now - lastBroadcastTime > 3500) {
+    lastBroadcastTime = now;
+    const currentMap = getCourierLocations();
+    currentMap[courierName] = updatedLocation;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentMap));
+    } catch (e) {}
 
-  // Save point to route history
-  try {
-    const savedHistory = localStorage.getItem(HISTORY_KEY);
-    const historyMap = savedHistory ? JSON.parse(savedHistory) : {};
-    const courierHistory = historyMap[courierName] || [];
-    
-    // Append point, keep last 100 points
-    const newPoint = { lat: positionData.lat, lng: positionData.lng, time: timestamp };
-    const updatedHistory = [...courierHistory.slice(-99), newPoint];
-    historyMap[courierName] = updatedHistory;
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyMap));
-  } catch (err) {
-    console.error('Error updating courier route history:', err);
+    // Broadcast event across tabs/windows/devices
+    broadcastDataChange('courier_location_updated', { courierName, location: updatedLocation });
+
+    // Dispatch custom window event for local reactive UI update safely
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('courier_location_updated', {
+          detail: { courierName, location: updatedLocation }
+        }));
+      }
+    } catch (e) {
+      try {
+        const evt = document.createEvent('CustomEvent');
+        evt.initCustomEvent('courier_location_updated', false, false, { courierName, location: updatedLocation });
+        window.dispatchEvent(evt);
+      } catch (err2) {}
+    }
   }
 
-  // Push live GPS coordinates directly to Supabase DB for Realtime map updates on Admin PC
-  updateSupabaseCourierLocation(courierName, positionData).catch(() => {});
-
-  // Broadcast event across tabs/windows/devices
-  broadcastDataChange('courier_location_updated', { courierName, location: updatedLocation });
-
-  // Dispatch custom window event for local reactive UI update
-  window.dispatchEvent(new CustomEvent('courier_location_updated', {
-    detail: { courierName, location: updatedLocation }
-  }));
+  // 2. Throttled Supabase Remote Database push (max once per 12 seconds)
+  if (now - lastSupabasePushTime > 12000) {
+    lastSupabasePushTime = now;
+    updateSupabaseCourierLocation(courierName, positionData).catch(() => {});
+  }
 
   return updatedLocation;
 }
@@ -188,19 +196,27 @@ export function startContinuousGpsTracking(courierName, onUpdateCallback) {
   return { watchId: activeWatchId, intervalId: activeIntervalId };
 }
 
-// Stop continuous tracking
+// Stop continuous tracking safely
 export function stopContinuousGpsTracking() {
-  if (activeWatchId !== null) {
-    if (Capacitor.isNativePlatform()) {
-      Geolocation.clearWatch({ id: activeWatchId });
-    } else if ('geolocation' in navigator) {
-      navigator.geolocation.clearWatch(activeWatchId);
+  try {
+    if (activeWatchId !== null) {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          Geolocation.clearWatch({ id: activeWatchId });
+        } catch (e) {}
+      } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          navigator.geolocation.clearWatch(activeWatchId);
+        } catch (e) {}
+      }
+      activeWatchId = null;
     }
-    activeWatchId = null;
-  }
-  if (activeIntervalId !== null) {
-    clearInterval(activeIntervalId);
-    activeIntervalId = null;
+    if (activeIntervalId !== null) {
+      clearInterval(activeIntervalId);
+      activeIntervalId = null;
+    }
+  } catch (e) {
+    // Ignore cleanup errors on unmount
   }
 }
 

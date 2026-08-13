@@ -11,18 +11,18 @@ export const requestNotificationPermission = async () => {
     console.warn('Native local notification request error:', e);
   }
 
-  if (!('Notification' in window)) {
-    console.log('Notifications not supported in this environment');
-    return false;
-  }
-  
-  if (Notification.permission === 'granted') {
-    return true;
-  }
-
-  if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        return true;
+      }
+      if (Notification.permission !== 'denied' && typeof Notification.requestPermission === 'function') {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      }
+    }
+  } catch (err) {
+    console.warn('Notification permission check warning:', err);
   }
 
   return false;
@@ -52,39 +52,45 @@ export const sendRolePushNotification = async ({ title, body, role = 'all', icon
     } catch (e) {
       console.error('Error triggering native notification:', e);
     }
-  } else if ('Notification' in window && Notification.permission === 'granted') {
-    // 2. Browser Web Notification API
+  } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    // 2. Browser Web Notification API (Guarded against Android Chrome Illegal constructor)
     try {
-      const notification = new Notification(title, {
-        body,
-        icon,
-        badge: icon,
-        vibrate: [200, 100, 200],
-        tag: `cosmo-crm-${Date.now()}`,
-        requireInteraction: true,
-      });
+      // In Android Chrome/WebView, new Notification() throws Illegal constructor
+      const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '');
+      if (!isAndroid && typeof Notification === 'function') {
+        const notification = new Notification(title, {
+          body,
+          icon,
+          badge: icon,
+          tag: `cosmo-crm-${Date.now()}`,
+          requireInteraction: false
+        });
 
-      notification.onclick = function() {
-        window.focus();
-        this.close();
-      };
+        notification.onclick = function() {
+          window.focus();
+          this.close();
+        };
+      }
     } catch (e) {
-      console.error('Error triggering push notification:', e);
+      // Ignore notification construction errors
     }
   }
 
   // Play sound effect if supported
   try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.3);
+    if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtxClass();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    }
   } catch (e) {
     // Ignore audio failures
   }

@@ -73,7 +73,7 @@ export default function AdminCardView({ orders, clients, currentUser, registered
   useEffect(() => {
     const updateGps = () => setCourierGpsMap(getCourierLocations());
     updateGps();
-    const interval = setInterval(updateGps, 4000);
+    const interval = setInterval(updateGps, 20000);
     window.addEventListener('courier_location_updated', updateGps);
     return () => {
       clearInterval(interval);
@@ -172,7 +172,7 @@ export default function AdminCardView({ orders, clients, currentUser, registered
   };
 
   const handlePriceChange = (id, newPrice) => {
-    setPricingList(pricingList.map(p => p.id === id ? { ...p, price: parseFloat(newPrice) || 0 } : p));
+    setPricingList(pricingList.map(p => p.id === id ? { ...p, price: newPrice } : p));
   };
 
   const triggerBackup = (type) => {
@@ -851,7 +851,7 @@ export default function AdminCardView({ orders, clients, currentUser, registered
                       <label className="input-label">Цена (сум) *</label>
                       <input 
                         type="number" 
-                        value={svc.price}
+                        value={svc.price ?? ''}
                         onChange={(e) => handlePriceChange(svc.id, e.target.value)}
                         className="input-field"
                         style={{ color: '#10b981', fontWeight: '800' }}
@@ -864,7 +864,11 @@ export default function AdminCardView({ orders, clients, currentUser, registered
 
             <button 
               onClick={() => {
-                localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(pricingList));
+                const formattedPricing = pricingList.map(p => ({
+                  ...p,
+                  price: parseFloat(p.price) || 0
+                }));
+                localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(formattedPricing));
                 alert('✅ Прайс-лист и структура услуг сохранены! Доступны курьеру и цеху.');
               }}
               className="btn btn-primary"

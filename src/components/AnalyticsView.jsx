@@ -21,6 +21,8 @@ import {
 export default function AnalyticsView({ orders = [], clients = [] }) {
   const [timeFilter, setTimeFilter] = useState('all'); // 'week' | 'month' | 'all'
 
+  const safeOrders = Array.isArray(orders) ? orders.filter(Boolean) : [];
+
   // Helper to parse order date
   const parseOrderDate = (dateStr) => {
     if (!dateStr) return null;
@@ -36,7 +38,8 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
   };
 
   // Filter orders by selected time window
-  const activeOrders = orders.filter(o => {
+  const activeOrders = safeOrders.filter(o => {
+    if (!o) return false;
     if (timeFilter === 'all') return true;
     const d = parseOrderDate(o.createdDate);
     if (!d) return true;
@@ -47,13 +50,18 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
     return true;
   });
 
-  // Total Metrics from real database
-  const totalGrossRevenue = activeOrders.reduce((sum, o) => sum + (parseFloat(o.totalAmount || o.agreedAmount || 0)), 0);
-  const totalPaidRevenue = activeOrders.reduce((sum, o) => sum + (parseFloat(o.paidAmount || (o.paymentStatus === 'paid' ? o.totalAmount : 0) || 0)), 0);
-  const pendingRevenue = Math.max(0, totalGrossRevenue - totalPaidRevenue);
+  // Total Metrics strictly based on paid orders from real database
+  const totalPaidRevenue = activeOrders.reduce((sum, o) => {
+    if (!o) return sum;
+    const paid = parseFloat(o.paidAmount !== undefined && o.paidAmount !== null ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
+    return sum + paid;
+  }, 0);
+
+  const totalOrderBilling = activeOrders.reduce((sum, o) => sum + (parseFloat(o?.totalAmount || 0) || 0), 0);
+  const pendingRevenue = Math.max(0, totalOrderBilling - totalPaidRevenue);
   
-  const completedOrders = activeOrders.filter(o => o.status === 'done');
-  const avgOrderValue = activeOrders.length > 0 ? Math.round(totalGrossRevenue / activeOrders.length) : 0;
+  const completedOrders = activeOrders.filter(o => o && o.status === 'done');
+  const avgOrderValue = completedOrders.length > 0 ? Math.round(totalPaidRevenue / completedOrders.length) : (activeOrders.length > 0 ? Math.round(totalPaidRevenue / activeOrders.length) : 0);
   
   const totalAreaWashed = activeOrders.reduce((sum, o) => {
     if (o.area && parseFloat(o.area) > 0) return sum + parseFloat(o.area);
@@ -78,7 +86,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
     { label: '✅ 4. Выполнен & Оплачен', count: statusCounts.done, color: '#10b981' }
   ];
 
-  // REAL Dynamic Day-of-Week Calculations from actual database
+  // REAL Dynamic Day-of-Week Calculations from actual database (strictly paid amounts)
   const daysOfWeek = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const dayRevenues = [0, 0, 0, 0, 0, 0, 0];
   const dayOrdersCount = [0, 0, 0, 0, 0, 0, 0];
@@ -87,7 +95,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
     const d = parseOrderDate(o.createdDate) || new Date();
     const jsDay = d.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
     const dayIdx = jsDay === 0 ? 6 : jsDay - 1; // Map 0 (Mon) to 6 (Sun)
-    const amount = parseFloat(o.totalAmount || o.paidAmount || 0);
+    const amount = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
 
     dayRevenues[dayIdx] += amount;
     dayOrdersCount[dayIdx] += 1;
@@ -95,21 +103,26 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
 
   const maxDayAmount = Math.max(...dayRevenues, 50000);
 
-  // REAL Dynamic Services breakdown from actual order items
+  // REAL Dynamic Services breakdown from actual order items (paid amounts)
   const serviceMap = {};
   let totalItemsCount = 0;
 
   activeOrders.forEach(o => {
+    const isPaid = o.paymentStatus === 'paid' || (parseFloat(o.paidAmount || 0) > 0);
+    const orderPaidAmount = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
+
     if (o.items && Array.isArray(o.items) && o.items.length > 0) {
       o.items.forEach(it => {
         const name = it.serviceName || it.name?.split(' (')[0] || 'Мойка ковров';
         const q = parseInt(it.qty) || 1;
-        const amt = parseFloat(it.total || (it.price ? it.price * q : 0));
+        const itemProportion = o.totalAmount > 0 ? ((parseFloat(it.total || 0)) / o.totalAmount) : (1 / o.items.length);
+        const itemPaid = isPaid ? (orderPaidAmount * itemProportion) : 0;
+        
         if (!serviceMap[name]) {
           serviceMap[name] = { count: 0, revenue: 0 };
         }
         serviceMap[name].count += q;
-        serviceMap[name].revenue += amt;
+        serviceMap[name].revenue += itemPaid;
         totalItemsCount += q;
       });
     } else {
@@ -119,7 +132,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
       }
       const count = parseInt(o.itemsCount) || 1;
       serviceMap[name].count += count;
-      serviceMap[name].revenue += parseFloat(o.totalAmount || 0);
+      serviceMap[name].revenue += orderPaidAmount;
       totalItemsCount += count;
     }
   });
@@ -131,21 +144,22 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
         .map(([name, data], idx) => ({
           name: name,
           count: data.count,
-          revenue: data.revenue,
+          revenue: Math.round(data.revenue),
           percent: totalItemsCount > 0 ? Math.round((data.count / totalItemsCount) * 100) : 0,
           color: palette[idx % palette.length]
         }))
     : [
-        { name: 'Мойка ковров', count: activeOrders.length, percent: 100, color: '#38bdf8', revenue: totalGrossRevenue }
+        { name: 'Мойка ковров', count: activeOrders.length, percent: 100, color: '#38bdf8', revenue: totalPaidRevenue }
       ];
 
-  // REAL Districts distribution from actual orders
+  // REAL Districts distribution from actual orders (paid revenue)
   const districtMap = {};
   activeOrders.forEach(o => {
     const dist = (o.district || 'Центр').trim();
+    const paid = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
     if (!districtMap[dist]) districtMap[dist] = { count: 0, revenue: 0 };
     districtMap[dist].count += 1;
-    districtMap[dist].revenue += parseFloat(o.totalAmount || 0);
+    districtMap[dist].revenue += paid;
   });
 
   const districtStats = Object.entries(districtMap)
@@ -153,19 +167,20 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
     .map(([dist, data], idx) => ({
       name: dist,
       count: data.count,
-      revenue: data.revenue,
+      revenue: Math.round(data.revenue),
       percent: activeOrders.length > 0 ? Math.round((data.count / activeOrders.length) * 100) : 0,
       color: palette[idx % palette.length]
     }));
 
-  // REAL Courier performance
+  // REAL Courier performance (paid collection)
   const courierMap = {};
   activeOrders.forEach(o => {
     const courier = (o.assignedCourier || 'Не назначен').trim();
+    const paid = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
     if (!courierMap[courier]) courierMap[courier] = { totalOrders: 0, delivered: 0, revenue: 0 };
     courierMap[courier].totalOrders += 1;
     if (o.status === 'done' || o.status === 'delivery') courierMap[courier].delivered += 1;
-    courierMap[courier].revenue += parseFloat(o.totalAmount || 0);
+    courierMap[courier].revenue += paid;
   });
 
   const courierStats = Object.entries(courierMap)
@@ -235,24 +250,24 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
             className="btn"
             style={{ fontSize: '12px', padding: '6px 12px', background: timeFilter === 'all' ? '#3b82f6' : 'transparent', color: '#fff', fontWeight: timeFilter === 'all' ? '800' : '500' }}
           >
-            Вся история ({orders.length})
+            Вся история ({safeOrders.length})
           </button>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-        {/* Metric 1: Общий Оборот */}
+        {/* Metric 1: Фактическая Выручка */}
         <div className="glass-card" style={{ borderLeft: '4px solid #10b981', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: '700' }}>ОБЩИЙ ОБОРОТ (СУМ)</span>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: '700' }}>ФАКТИЧЕСКАЯ ВЫРУЧКА (ОПЛАЧЕНО)</span>
             <DollarSign size={18} color="#10b981" />
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>
-            {totalGrossRevenue.toLocaleString()} сум
+          <div style={{ fontSize: '22px', fontWeight: '900', color: '#10b981' }}>
+            {totalPaidRevenue.toLocaleString()} сум
           </div>
-          <div style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <ArrowUpRight size={14} /> <span>Оплачено: {totalPaidRevenue.toLocaleString()} сум ({totalGrossRevenue > 0 ? Math.round((totalPaidRevenue / totalGrossRevenue) * 100) : 0}%)</span>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ArrowUpRight size={14} color="#10b981" /> <span>Всего начислено: {totalOrderBilling.toLocaleString()} сум {pendingRevenue > 0 ? `(Долг: ${pendingRevenue.toLocaleString()} сум)` : ''}</span>
           </div>
         </div>
 
@@ -262,7 +277,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: '700' }}>ВСЕГО ЗАКАЗОВ В БАЗЕ</span>
             <Layers size={18} color="#38bdf8" />
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>
+          <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-main)' }}>
             {activeOrders.length} заказов
           </div>
           <div style={{ fontSize: '11px', color: '#38bdf8' }}>
@@ -276,7 +291,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: '700' }}>СРЕДНИЙ ЧЕК ЗАКАЗА</span>
             <TrendingUp size={18} color="#facc15" />
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>
+          <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-main)' }}>
             {avgOrderValue.toLocaleString()} сум
           </div>
           <div style={{ fontSize: '11px', color: '#facc15' }}>
@@ -290,7 +305,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
             <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: '700' }}>ВЫМЫТО ПЛОЩАДИ (М²)</span>
             <Ruler size={18} color="#c084fc" />
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>
+          <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text-main)' }}>
             {totalAreaWashed.toFixed(1)} м²
           </div>
           <div style={{ fontSize: '11px', color: '#c084fc' }}>
@@ -364,7 +379,7 @@ export default function AnalyticsView({ orders = [], clients = [] }) {
                 />
                 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12.5px', color: '#ffffff', fontWeight: '800' }}>{day}</span>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-main)', fontWeight: '800' }}>{day}</span>
                   <span style={{ fontSize: '10px', color: count > 0 ? '#38bdf8' : '#64748b', fontWeight: '600' }}>
                     {count > 0 ? `${count} зак.` : '-'}
                   </span>
