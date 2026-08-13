@@ -12,6 +12,7 @@ import CalculatorView from './components/CalculatorView';
 import SMSManagementView from './components/SMSManagementView';
 import OrderModal from './components/OrderModal';
 import NotificationDrawer from './components/NotificationDrawer';
+import MobileDrawer from './components/MobileDrawer';
 import AuthModal from './components/AuthModal';
 
 // Lazy-loaded heavy views for code-splitting & fast mobile startup
@@ -132,6 +133,7 @@ export default function App() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [presetOrderData, setPresetOrderData] = useState(null);
 
   // Production State strictly driven by Supabase Postgres DB
@@ -672,6 +674,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           theme={theme}
           toggleTheme={toggleTheme}
+          onToggleMobileMenu={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
         />
 
         <main className="page-wrapper">
@@ -781,7 +784,21 @@ export default function App() {
       <MobileBottomNav 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        userRole={currentUser?.role} 
+        onOpenMenu={() => setIsMobileDrawerOpen(true)}
+        isMenuOpen={isMobileDrawerOpen}
+      />
+
+      {/* Mobile Drawer (Full access to all sections on phone) */}
+      <MobileDrawer 
+        isOpen={isMobileDrawerOpen}
+        onClose={() => setIsMobileDrawerOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
       />
 
       {/* Modals & Slide-overs */}

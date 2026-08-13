@@ -612,6 +612,10 @@ img, video, iframe, canvas, svg {
     display: none !important;
   }
 
+  .mobile-show {
+    display: inline-flex !important;
+  }
+
   .mobile-only {
     display: block !important;
   }
@@ -629,6 +633,19 @@ img, video, iframe, canvas, svg {
     white-space: normal;
     text-align: center;
   }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-show {
+  display: none;
 }
 
 /* ==========================================================================

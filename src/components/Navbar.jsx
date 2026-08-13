@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck, Users, Tag, Sun, Moon } from 'lucide-react';
+import { Search, Plus, Bell, Clock, RefreshCw, LogOut, UserCheck, Users, Tag, Sun, Moon, Menu } from 'lucide-react';
 
-export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout, activeTab, setActiveTab, theme, toggleTheme }) {
+export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, notificationsCount, onToggleNotifications, currentUser, onLogout, activeTab, setActiveTab, theme, toggleTheme, onToggleMobileMenu }) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -38,28 +38,52 @@ export default function Navbar({ onOpenNewOrder, searchQuery, setSearchQuery, no
       zIndex: 15,
       flexWrap: 'wrap'
     }}>
-      {/* Search Input Box */}
-      <div style={{ position: 'relative', flex: '1 1 180px', maxWidth: '380px', minWidth: '140px' }}>
-        <Search 
-          size={16}
-          color="var(--text-muted)" 
-          style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-        />
-        <input
-          type="text"
-          placeholder="Поиск..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="input-field"
-          style={{
-            paddingLeft: '36px',
-            paddingRight: '12px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(17, 24, 39, 0.8)',
-            fontSize: '13px',
-            height: '38px'
-          }}
-        />
+      {/* Left Area: Mobile Menu Trigger + Search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 180px', maxWidth: '420px', minWidth: '140px' }}>
+        {onToggleMobileMenu && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="mobile-show btn-icon"
+            style={{ 
+              width: '38px', 
+              height: '38px', 
+              padding: 0, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--border-color)',
+              flexShrink: 0
+            }}
+            title="Открыть все разделы и настройки"
+          >
+            <Menu size={20} color="var(--accent-secondary)" />
+          </button>
+        )}
+
+        {/* Search Input Box */}
+        <div style={{ position: 'relative', width: '100%' }}>
+          <Search 
+            size={16}
+            color="var(--text-muted)" 
+            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
+          />
+          <input
+            type="text"
+            placeholder="Поиск..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field"
+            style={{
+              paddingLeft: '36px',
+              paddingRight: '12px',
+              borderRadius: 'var(--radius-full)',
+              background: 'rgba(17, 24, 39, 0.8)',
+              fontSize: '13px',
+              height: '38px'
+            }}
+          />
+        </div>
       </div>
 
       {/* Right Controls */}
