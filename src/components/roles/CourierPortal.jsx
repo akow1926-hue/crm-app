@@ -22,7 +22,8 @@ import {
   Home,
   Send,
   Trash2,
-  Navigation
+  Navigation,
+  QrCode
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
@@ -34,7 +35,7 @@ import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 import { printOrderReceipt } from '../../utils/printReceipt';
 import RouteOptimizerModal from '../RouteOptimizerModal';
 
-export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
+export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers, onOpenQRReceipt }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
 
   // Delete Order Handler for Courier Panel
@@ -1301,8 +1302,8 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                     </span>
                   </div>
 
-                  {/* Row 9: 5 Square Action Buttons [ ⇄ ] [ ✓ ] [ ✏️ ] [ 🧾 ] [ 🗑️ ] */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px', marginTop: '4px' }}>
+                  {/* Row 9: 6 Square Action Buttons [ ⇄ ] [ ✓ ] [ ✏️ ] [ 🧾 ] [ 📱QR ] [ 🗑️ ] */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '5px', marginTop: '4px' }}>
                     {/* 1. Reassign Driver */}
                     <button 
                       onClick={() => setReassignModalOrder(order)} 
@@ -1388,13 +1389,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                       <Edit3 size={15} />
                     </button>
 
-                    {/* 4. Receipt */}
+                    {/* 4. Digital QR Receipt */}
                     <button 
-                      onClick={() => handlePrintReceipt(order)}
+                      onClick={() => {
+                        if (onOpenQRReceipt) onOpenQRReceipt(order);
+                        else handlePrintReceipt(order);
+                      }}
                       className="btn"
                       style={{
-                        background: 'rgba(56, 189, 248, 0.15)',
-                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        background: 'rgba(56, 189, 248, 0.2)',
+                        border: '1px solid #38bdf8',
                         color: '#38bdf8',
                         height: '36px',
                         padding: '0',
@@ -1404,12 +1408,33 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                         justifyContent: 'center',
                         cursor: 'pointer'
                       }}
-                      title="Чек заказа"
+                      title="Электронный QR-чек и отправка SMS клиенту"
+                    >
+                      <QrCode size={15} />
+                    </button>
+
+                    {/* 5. Print Receipt */}
+                    <button 
+                      onClick={() => handlePrintReceipt(order)}
+                      className="btn"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: '#facc15',
+                        height: '36px',
+                        padding: '0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Печать чека"
                     >
                       <Printer size={15} />
                     </button>
 
-                    {/* 5. Delete Order */}
+                    {/* 6. Delete Order */}
                     <button 
                       onClick={() => handleDeleteOrder(order)}
                       className="btn"

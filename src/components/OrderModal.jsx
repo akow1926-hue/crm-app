@@ -13,7 +13,8 @@ import {
   Truck,
   Languages,
   Clock,
-  Sparkles
+  Sparkles,
+  QrCode
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
@@ -21,7 +22,7 @@ import { smsTemplates, sendSMSNotification, INSTAGRAM_QR_BASE64 } from '../servi
 import { sendTelegramOrderCard, getTelegramBotConfig } from '../services/telegramBotService';
 import { printOrderReceipt } from '../utils/printReceipt';
 
-export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [] }) {
+export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [], onOpenQRReceipt }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
   const activeWashers = getActiveWashers(registeredUsers);
 
@@ -260,6 +261,17 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
           </div>
 
           <div style={{ display: 'flex', gap: '6px' }}>
+            {onOpenQRReceipt && (
+              <button 
+                type="button" 
+                onClick={() => onOpenQRReceipt(formData)} 
+                className="btn btn-secondary" 
+                style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(56, 189, 248, 0.18)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.4)' }} 
+                title="QR-код и электронный чек для клиента"
+              >
+                <QrCode size={13} />
+              </button>
+            )}
             <button type="button" onClick={handleSendTelegram} className="btn btn-secondary" style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.3)' }} title="Отправить карточку заказа в общую Telegram-группу">
               <Send size={13} />
             </button>

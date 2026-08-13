@@ -13,6 +13,8 @@ import SMSManagementView from './components/SMSManagementView';
 import OrderModal from './components/OrderModal';
 import NotificationDrawer from './components/NotificationDrawer';
 import MobileDrawer from './components/MobileDrawer';
+import ClientTrackingPortal from './components/ClientTrackingPortal';
+import QRReceiptModal from './components/QRReceiptModal';
 import AuthModal from './components/AuthModal';
 
 // Lazy-loaded heavy views for code-splitting & fast mobile startup
@@ -134,7 +136,20 @@ export default function App() {
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [qrModalOrder, setQrModalOrder] = useState(null);
   const [presetOrderData, setPresetOrderData] = useState(null);
+
+  // Public Online Tracking Route (?track=1054 or #track-1054)
+  const [publicTrackingOrderId, setPublicTrackingOrderId] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const trackParam = urlParams.get('track');
+    if (trackParam) return trackParam;
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#track-')) {
+      return hash.replace('#track-', '');
+    }
+    return null;
+  });
 
   // Production State strictly driven by Supabase Postgres DB
   const [orders, setOrdersState] = useState([]);
@@ -575,6 +590,20 @@ export default function App() {
     setIsNewOrderModalOpen(true);
   };
 
+  // 0. Public Client Online Tracking Portal (No login needed for clients)
+  if (publicTrackingOrderId) {
+    return (
+      <ClientTrackingPortal 
+        orderId={publicTrackingOrderId} 
+        orders={orders} 
+        onBackToCRM={() => {
+          setPublicTrackingOrderId(null);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }} 
+      />
+    );
+  }
+
   // If not logged in -> Show Authentication / Registration Screen
   if (!currentUser) {
     return <AuthModal onLogin={handleLogin} registeredUsers={registeredUsers} onRegisterUser={handleRegisterUser} />;
@@ -593,8 +622,15 @@ export default function App() {
             currentUser={currentUser} 
             onLogout={handleLogout} 
             registeredUsers={registeredUsers}
+            onOpenQRReceipt={(ord) => setQrModalOrder(ord)}
           />
         </Suspense>
+        {qrModalOrder && (
+          <QRReceiptModal 
+            order={qrModalOrder} 
+            onClose={() => setQrModalOrder(null)} 
+          />
+        )}
       </div>
     );
   }
@@ -809,6 +845,14 @@ export default function App() {
           onSave={handleSaveOrder}
           registeredUsers={registeredUsers}
           allOrders={orders}
+          onOpenQRReceipt={(ord) => setQrModalOrder(ord)}
+        />
+      )}
+
+      {qrModalOrder && (
+        <QRReceiptModal 
+          order={qrModalOrder} 
+          onClose={() => setQrModalOrder(null)} 
         />
       )}
 
