@@ -258,7 +258,7 @@ export const generateReceiptHtml = (order) => {
             <div>
               <div class="brand-title">Cosmo Cleaning Service</div>
               <div class="brand-subtitle">Профессиональная чистка и стирка ковров в Самарканде</div>
-              <div class="brand-contacts">Тел: +998 20 002 20 99 &bull; Instagram: @cosmocleaning.uz</div>
+              <div class="brand-contacts">Тел: +998 95 032 33 30 &bull; Instagram: @cosmocleaning.uz</div>
             </div>
             <div class="order-badge-block">
               <div class="order-badge">ЧЕК-ЗАКАЗ №${order.id || order.tempId || 'Б/Н'}</div>

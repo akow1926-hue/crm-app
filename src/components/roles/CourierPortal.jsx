@@ -495,11 +495,11 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const handleOpenSmsModal = (order) => {
     setSmsModalOrder(order);
     const lang = String(order.language || 'Русский').toLowerCase();
-    let defaultMsg = `Здравствуйте, ${order.clientName || 'уважаемый клиент'}! Курьер Cosmo Cleaning уже выехал к вам по заказу #${order.id}. Буду у вас в течение 20-30 минут. Тел: +998 90 123 45 67`;
+    let defaultMsg = `Здравствуйте, ${order.clientName || 'уважаемый клиент'}! Курьер Cosmo Cleaning уже выехал к вам по заказу #${order.id}. Буду у вас в течение 20-30 минут. Тел: +998 95 032 33 30`;
     if (lang.includes('узб') || lang.includes('uz')) {
-      defaultMsg = `Assalomu alaykum, ${order.clientName || 'hurmatli mijoz'}! Cosmo Cleaning kuryeri #${order.id}-sonli buyurtmangiz bo'yicha yo'lga chiqdi. 20-30 daqiqada yetib boramiz. Tel: +998 90 123 45 67`;
+      defaultMsg = `Assalomu alaykum, ${order.clientName || 'hurmatli mijoz'}! Cosmo Cleaning kuryeri #${order.id}-sonli buyurtmangiz bo'yicha yo'lga chiqdi. 20-30 daqiqada yetib boramiz. Tel: +998 95 032 33 30`;
     } else if (lang.includes('тадж') || lang.includes('tj')) {
-      defaultMsg = `Ассалому алейкум, ${order.clientName || 'мизоҷи муҳтарам'}! Курери Cosmo Cleaning бо фармоиши #${order.id} ба сӯи шумо равона шуд. Баъди 20-30 дақиқа мерасем. Тел: +998 90 123 45 67`;
+      defaultMsg = `Ассалому алейкум, ${order.clientName || 'мизоҷи муҳтарам'}! Курери Cosmo Cleaning бо фармоиши #${order.id} ба сӯи шумо равона шуд. Баъди 20-30 дақиқа мерасем. Тел: +998 95 032 33 30`;
     }
     setCustomSmsText(defaultMsg);
   };

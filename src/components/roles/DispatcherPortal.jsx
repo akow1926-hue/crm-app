@@ -102,7 +102,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
 
   // Quick SMS to Client
   const handleSendQuickSMS = async (order) => {
-    const defaultText = `Уважаемый(ая) ${order.clientName}, ваш заказ #${order.id} принят в работу Cosmo Cleaning. Тел: +998 90 123 45 67`;
+    const defaultText = `Уважаемый(ая) ${order.clientName}, ваш заказ #${order.id} принят в работу Cosmo Cleaning. Тел: +998 95 032 33 30`;
     const text = prompt(`Отправка SMS клиенту (${order.phone}):`, defaultText);
     if (text) {
       const res = await sendSMSNotification({ phone: order.phone, text });

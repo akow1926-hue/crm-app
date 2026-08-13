@@ -138,7 +138,7 @@ export default function AdminCardView({ orders, clients, currentUser, registered
   // SMS Center
   const [smsBalance, setSmsBalance] = useState(48500); // 48,500 сум
   const [smsTemplates, setSmsTemplates] = useState({
-    newOrder: 'Уважаемый {client}, ваш заказ #{id} успешно создан в Cosmo Cleaning. Тел: +998 90 123 45 67',
+    newOrder: 'Уважаемый {client}, ваш заказ #{id} успешно создан в Cosmo Cleaning. Тел: +998 95 032 33 30',
     readyOrder: 'Уважаемый {client}, ваш заказ #{id} выстиран и готов к доставке!',
     doneOrder: 'Спасибо за заказ #{id} в Cosmo Cleaning! Будем рады видеть вас снова.'
   });

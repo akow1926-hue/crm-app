@@ -125,7 +125,7 @@ export const formatMeasuredOrderSMS = (order, registeredUsers = []) => {
   } else if (order.courierPhone) {
     courierPhone = order.courierPhone;
   } else {
-    courierPhone = '+998 90 123 45 67';
+    courierPhone = '+998 95 032 33 30';
   }
 
   const rawSum = order.totalAmount !== undefined ? order.totalAmount : (order.agreedAmount || 0);

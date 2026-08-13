@@ -90,7 +90,7 @@ export default function ClientTrackingPortal({ orderId, orders = [], onBackToCRM
   }, [orderId]);
 
   const companyName = localStorage.getItem('cosmo_crm_company_name') || 'COSMO CLEANING';
-  const companyPhone = localStorage.getItem('cosmo_crm_company_phone') || '+998 90 123 45 67';
+  const companyPhone = localStorage.getItem('cosmo_crm_company_phone') || '+998950323330';
   const logoUrl = localStorage.getItem('cosmo_crm_logo_url') || '/logo.jpg';
 
   if (!order) {
@@ -709,25 +709,6 @@ export default function ClientTrackingPortal({ orderId, orders = [], onBackToCRM
             <span>{copiedLink ? 'Ссылка скопирована!' : 'Скопировать чек'}</span>
           </button>
         </div>
-
-        {/* Staff Switch back to CRM (If staff opens it) */}
-        {onBackToCRM && (
-          <div style={{ textAlign: 'center', marginTop: '12px' }}>
-            <button
-              onClick={onBackToCRM}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '12px',
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
-            >
-              👑 Вернуться в систему управления CRM
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
