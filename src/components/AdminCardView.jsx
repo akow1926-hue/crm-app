@@ -29,14 +29,13 @@ import {
   getGoogleSheetConfig, 
   saveGoogleSheetConfig, 
   syncAllOrdersToGoogleSheets, 
-  getGoogleAppsScriptTemplate,
-  syncUserToGoogleSheets
+  getGoogleAppsScriptTemplate
 } from '../services/googleSheetsService';
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { broadcastDataChange } from '../services/syncEngine';
 import { getTelegramBotConfig, saveTelegramBotConfig, testTelegramBotToken, testSendGroupMessage } from '../services/telegramBotService';
 
-export default function AdminCardView({ orders, setOrders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
+export default function AdminCardView({ orders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
   const [activeSection, setActiveSection] = useState('profile');
 
   // Telegram Common Group Notification Bot Config State

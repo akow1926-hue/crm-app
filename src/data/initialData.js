@@ -109,10 +109,12 @@ export const initialOrders = [
 ];
 
 export const initialClients = [
-  { id: "CL-101", name: "Шерзод Рахимов", phone: "+998 90 450 12 34", address: "ул. Мирзо Улугбека, 45", totalOrders: 3, totalSpent: 890000 },
-  { id: "CL-102", name: "Наргиза Каримова", phone: "+998 93 320 88 99", address: "массив Согдиана, 18", totalOrders: 2, totalSpent: 420000 },
-  { id: "CL-103", name: "ООО 'Самарканд Отель'", phone: "+998 66 233 00 11", address: "Университетский бульвар, 5", totalOrders: 5, totalSpent: 2150000 },
-  { id: "CL-104", name: "Фарход Усманов", phone: "+998 97 911 22 33", address: "Микрорайон 12, д. 4", totalOrders: 1, totalSpent: 180000 }
+  { id: "CL-101", name: "Шерзод Рахимов", phone: "+998 90 450 12 34", address: "ул. Мирзо Улугбека, 45", district: "Центр", landmark: "Ориентир: Горбольница №1", language: "Узбекский", totalOrders: 5, totalSpent: 1250000, ltv: 1250000, tier: "VIP", discountPercent: 10, notes: "Постоянный VIP-клиент. Предпочитает выгрузку вечером." },
+  { id: "CL-102", name: "Наргиза Каримова", phone: "+998 93 320 88 99", address: "массив Согдиана, 18", district: "Согдиана", landmark: "За супермаркетом 'Макро'", language: "Русский", totalOrders: 3, totalSpent: 570000, ltv: 570000, tier: "Premier", discountPercent: 5, notes: "Всегда просит упаковать в двойную пленку." },
+  { id: "CL-103", name: "ООО 'Самарканд Отель'", phone: "+998 66 233 00 11", address: "Университетский бульвар, 5", district: "Центр", landmark: "Центральный вход отеля", language: "Русский", totalOrders: 12, totalSpent: 5400000, ltv: 5400000, tier: "VIP", discountPercent: 10, notes: "Корпоративный клиент. Оплата по безналичному расчету." },
+  { id: "CL-104", name: "Фарход Усманов", phone: "+998 97 911 22 33", address: "Микрорайон 12, д. 4", district: "Вокзал", landmark: "Рядом с кондитерской", language: "Русский", totalOrders: 1, totalSpent: 180000, ltv: 180000, tier: "Standard", discountPercent: 0, notes: "Новый клиент. Требуется звонок за 30 минут." },
+  { id: "CL-105", name: "Джамшид Баходиров", phone: "+998 91 522 77 88", address: "ул. Рудаки, 112", district: "Сиёб", landmark: "Напротив колледжа", language: "Узбекский", totalOrders: 4, totalSpent: 980000, ltv: 980000, tier: "Premier", discountPercent: 5, notes: "Ковры ручной работы, требовательный клиент." },
+  { id: "CL-106", name: "Ресторан 'Регистан Палас'", phone: "+998 66 210 44 55", address: "ул. Регистанская, 30", district: "Центр", landmark: "Площадь Регистан", language: "Русский", totalOrders: 8, totalSpent: 3800000, ltv: 3800000, tier: "VIP", discountPercent: 10, notes: "Чистка ковролина и мягких стульев раз в месяц." }
 ];
 
 export const serviceCatalog = [

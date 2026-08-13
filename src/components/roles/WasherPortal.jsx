@@ -26,8 +26,9 @@ import {
 } from 'lucide-react';
 import { serviceCatalog } from '../../data/initialData';
 import { notifyOrderReady, getTelegramBotConfig } from '../../services/telegramBotService';
+import { sendMeasuredOrderSMS } from '../../services/smsService';
 
-export default function WasherPortal({ orders, setOrders, currentUser, onLogout }) {
+export default function WasherPortal({ orders, setOrders, currentUser, onLogout, registeredUsers = [] }) {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'need_measure' | 'cleaning'
   const [searchQuery, setSearchQuery] = useState('');
   const [measureModalOrder, setMeasureModalOrder] = useState(null);
@@ -214,15 +215,24 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout 
       return o;
     }));
 
-    // Trigger Telegram Group Notification (Case 3: Готовность и замеры ковров)
-    notifyOrderReady(updatedTargetOrder || { ...measureModalOrder, status: 'delivery', area: totalOrderArea, totalAmount: finalTotalAmount, items: itemsFormatted }, {
+    const orderToNotify = updatedTargetOrder || { ...measureModalOrder, status: 'delivery', area: totalOrderArea, totalAmount: finalTotalAmount, items: itemsFormatted };
+
+    // 1. Trigger Telegram Group Notification (Case 3: Готовность и замеры ковров)
+    notifyOrderReady(orderToNotify, {
       washer: currentUser?.name || currentUser?.username || 'Мастер цеха',
       measuredItems: itemsFormatted,
       totalArea: parseFloat(totalOrderArea.toFixed(2)),
       totalAmount: finalTotalAmount
     }).catch(err => console.warn('Telegram ready notify error:', err));
 
-    alert(`✅ Замеры сохранены (Общая площадь: ${totalOrderArea.toFixed(2)} кв.м, Сумма: ${finalTotalAmount.toLocaleString()} сум)!\nЗаказ #${measureModalOrder.id || 'Б/Н'} переведен в статус «Готов к доставке» и отправлен курьеру.`);
+    // 2. Trigger Post-Measurement SMS to Client (Только после размерки)
+    sendMeasuredOrderSMS(orderToNotify, registeredUsers).then(res => {
+      if (res && res.success) {
+        console.log('📱 СМС после размерки успешно отправлено клиенту:', res.message);
+      }
+    }).catch(err => console.warn('SMS send error:', err));
+
+    alert(`✅ Замеры сохранены (Общая площадь: ${totalOrderArea.toFixed(2)} кв.м, Сумма: ${finalTotalAmount.toLocaleString()} сум)!\n📱 Клиенту отправлено СМС-уведомление с составом заказа, суммой и контактом водителя.\nЗаказ #${measureModalOrder.id || 'Б/Н'} переведен в статус «Готов к доставке» и передан курьеру.`);
     setMeasureModalOrder(null);
   };
 

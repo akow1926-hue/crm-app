@@ -4,31 +4,19 @@ import {
   MapPin, 
   Phone, 
   CheckCircle2, 
-  DollarSign, 
-  Navigation, 
-  Clock, 
-  ShieldAlert, 
   Check, 
   LogOut, 
   Package, 
   Plus, 
   ArrowLeftRight, 
-  FileText, 
   Printer, 
   X, 
   Compass, 
   Radio, 
   MessageSquare, 
-  Copy, 
-  Calendar, 
   User, 
   Languages, 
-  Tag, 
-  ExternalLink,
   Search,
-  Filter,
-  Sparkles,
-  AlertCircle,
   Edit3,
   Headphones,
   Home,
@@ -38,10 +26,11 @@ import {
 import { serviceCatalog } from '../../data/initialData';
 import { startContinuousGpsTracking, stopContinuousGpsTracking } from '../../services/gpsTrackingService';
 import { getActiveCouriers } from '../../services/staffHelper';
-import { sendSMSNotification } from '../../services/smsService';
+import { sendSMSNotification, INSTAGRAM_QR_BASE64 } from '../../services/smsService';
 import { getTelegramBotConfig, notifyOrderPickup, notifyOrderCompleted, notifyOrderCreated } from '../../services/telegramBotService';
 import { deleteSupabaseOrder } from '../../services/supabaseService';
 import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
+import { printOrderReceipt } from '../../utils/printReceipt';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -526,6 +515,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   // Open Printable Electronic Receipt Modal
   const handlePrintReceipt = (order) => {
     setReceiptModalOrder(order);
+  };
+
+  // Open Separate Print Window with thermal receipt layout
+  const handlePrintReceiptWindow = (order) => {
+    if (!order) return;
+    printOrderReceipt({
+      ...order,
+      assignedCourier: courierName || order.assignedCourier,
+      dispatcherName: order.dispatcherName || order.createdBy || 'Мадина'
+    });
   };
 
   // Reassign Order
@@ -1766,70 +1765,70 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
           }}>
             {/* Printable Receipt Content */}
-            <div id="printable-receipt-area" style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#000000' }}>
+            <div id="printable-receipt-area" style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13.5px', color: '#000000' }}>
               
               {/* 1. Название */}
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #000000', paddingBottom: '10px' }}>
-                <div style={{ fontSize: '19px', fontWeight: '900', color: '#000000', letterSpacing: '0.5px' }}>Cosmo Cleaning</div>
-                <div style={{ fontSize: '13px', fontWeight: '700', marginTop: '2px', color: '#333333' }}>
+              <div style={{ textAlign: 'center', borderBottom: '2.5px solid #000000', paddingBottom: '10px' }}>
+                <div style={{ fontSize: '22px', fontWeight: '900', color: '#000000', letterSpacing: '0.5px' }}>Cosmo Cleaning</div>
+                <div style={{ fontSize: '15px', fontWeight: '800', marginTop: '3px', color: '#1e293b' }}>
                   Чек заказа №{receiptModalOrder.id || 'Б/Н'}
                 </div>
               </div>
 
               {/* 2. Дата и время оформления, затем дата и время окончания */}
-              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
-                <div><strong>Дата и время оформления:</strong> {receiptModalOrder.createdDate || '-'}</div>
-                <div><strong>Дата и время окончания:</strong> {new Date().toLocaleString('ru-RU')}</div>
+              <div style={{ borderBottom: '1px dashed #64748b', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '13.5px' }}>
+                <div><strong>Дата оформления:</strong> {receiptModalOrder.createdDate || '-'}</div>
+                <div><strong>Дата окончания:</strong> {new Date().toLocaleString('ru-RU')}</div>
               </div>
 
               {/* 3. Данные клиента: имя, телефон, адрес */}
-              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
+              <div style={{ borderBottom: '1px dashed #64748b', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '13.5px' }}>
                 <div><strong>Клиент:</strong> {receiptModalOrder.clientName || 'Клиент'}</div>
                 <div><strong>Телефон:</strong> {receiptModalOrder.phone || receiptModalOrder.clientPhone || '-'}</div>
                 <div><strong>Адрес:</strong> {receiptModalOrder.district ? `[${receiptModalOrder.district}] ` : ''}{receiptModalOrder.address || '-'}{receiptModalOrder.landmark ? ` (${receiptModalOrder.landmark})` : ''}</div>
               </div>
 
               {/* 4. Кто обслуживал: курьер и диспетчер */}
-              <div style={{ borderBottom: '1px dashed #94a3b8', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12.5px' }}>
-                <div><strong>Курьер (доставил):</strong> {courierName || receiptModalOrder.assignedCourier || '-'}</div>
-                <div><strong>Диспетчер (принял):</strong> {receiptModalOrder.dispatcherName || receiptModalOrder.createdBy || 'Мадина'}</div>
+              <div style={{ borderBottom: '1px dashed #64748b', paddingBottom: '10px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '13.5px' }}>
+                <div><strong>Курьер:</strong> {courierName || receiptModalOrder.assignedCourier || '-'}</div>
+                <div><strong>Диспетчер:</strong> {receiptModalOrder.dispatcherName || receiptModalOrder.createdBy || 'Мадина'}</div>
               </div>
 
               {/* 5. Размеры каждого изделия и цены */}
-              <div style={{ borderBottom: '2px solid #000000', paddingBottom: '10px' }}>
-                <div style={{ fontWeight: '800', marginBottom: '6px', fontSize: '13px' }}>Изделия и услуги:</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ borderBottom: '2.5px solid #000000', paddingBottom: '12px' }}>
+                <div style={{ fontWeight: '800', marginBottom: '8px', fontSize: '14px' }}>Изделия и услуги:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {receiptModalOrder.items && receiptModalOrder.items.length > 0 ? (
                     receiptModalOrder.items.map((it, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: idx < receiptModalOrder.items.length - 1 ? '1px dashed #e2e8f0' : 'none', paddingBottom: '4px' }}>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: idx < receiptModalOrder.items.length - 1 ? '1px dashed #e2e8f0' : 'none', paddingBottom: '6px' }}>
                         <div>
-                          <div style={{ fontWeight: '700' }}>{it.name}</div>
+                          <div style={{ fontWeight: '800', fontSize: '13.5px' }}>{it.name || it.serviceName}</div>
                           {it.width && it.length ? (
-                            <div style={{ fontSize: '11.5px', color: '#555555' }}>
-                              Размеры: {it.width}м x {it.length}м = {it.area} м² ({it.price?.toLocaleString()} сум/м²)
+                            <div style={{ fontSize: '12px', color: '#475569', marginTop: '1px' }}>
+                              Размеры: {it.width}м x {it.length}м = {it.area || (it.width * it.length)} м² ({it.price?.toLocaleString()} сум/м²)
                             </div>
                           ) : it.qty > 1 ? (
-                            <div style={{ fontSize: '11.5px', color: '#555555' }}>
+                            <div style={{ fontSize: '12px', color: '#475569', marginTop: '1px' }}>
                               Количество: {it.qty} {it.unit || 'шт'} x {it.price?.toLocaleString()} сум
                             </div>
                           ) : null}
                         </div>
-                        <div style={{ fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                        <div style={{ fontWeight: '900', fontSize: '14px', textAlign: 'right', whiteSpace: 'nowrap', marginLeft: '10px' }}>
                           {(it.total || it.price || 0).toLocaleString()} сум
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div style={{ fontSize: '12px', color: '#555555' }}>Ковры / изделия (замерены в цеху)</div>
+                    <div style={{ fontSize: '13px', color: '#475569' }}>Ковры / изделия (замерены в цеху)</div>
                   )}
                 </div>
               </div>
 
               {/* 6. В самом низу: итоговая сумма, оплаченная сумма и способ оплаты */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '2px', fontSize: '13px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: '900' }}>
-                  <span>Итоговая сумма:</span>
-                  <span>{(receiptModalOrder.totalAmount || receiptModalOrder.agreedAmount || 0).toLocaleString()} сум</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '4px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: '800', fontSize: '15px' }}>Итоговая сумма:</span>
+                  <span style={{ fontSize: '18px', fontWeight: '900', color: '#000' }}>{(receiptModalOrder.totalAmount || receiptModalOrder.agreedAmount || 0).toLocaleString()} сум</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
@@ -1842,14 +1841,49 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                   <span style={{ fontWeight: '700' }}>{receiptModalOrder.paymentType || 'Наличные'}</span>
                 </div>
               </div>
+
+              {/* 7. Instagram QR Code & Footer */}
+              <div style={{
+                borderTop: '1px dashed #64748b',
+                marginTop: '12px',
+                paddingTop: '12px',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <div style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b' }}>
+                  Bizning Instagram sahifamiz:
+                </div>
+                <div style={{
+                  padding: '4px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  display: 'inline-flex',
+                  marginTop: '2px',
+                  marginBottom: '2px'
+                }}>
+                  <img 
+                    src={INSTAGRAM_QR_BASE64} 
+                    alt="Instagram QR Code" 
+                    style={{ width: '110px', height: '110px', display: 'block' }} 
+                  />
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#e1306c' }}>
+                  @cosmocleaning.uz
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  Kamerangizni QR kodga qarating • Toza va sifatli xizmat!
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons: Print & Close */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
               <button 
-                onClick={() => {
-                  window.print();
-                }}
+                onClick={() => handlePrintReceiptWindow(receiptModalOrder)}
                 className="btn btn-primary"
                 style={{ flex: 1, background: '#0f172a', color: '#ffffff', padding: '10px', fontSize: '13px', fontWeight: '800', borderRadius: '8px' }}
               >

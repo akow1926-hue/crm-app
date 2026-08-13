@@ -3,6 +3,7 @@ import {
   LayoutDashboard, 
   KanbanSquare, 
   Table, 
+  Archive,
   Users, 
   Calculator, 
   Wallet, 
@@ -31,8 +32,9 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
     {
       title: 'ОПЕРАЦИИ',
       items: [
-        { id: 'kanban', label: 'Канбан Доска', icon: KanbanSquare, badge: '6' },
+        { id: 'kanban', label: 'Канбан Доска', icon: KanbanSquare, badge: 'Активные' },
         { id: 'ordersTable', label: 'Таблица Заказов', icon: Table },
+        { id: 'archive', label: 'Архив Заказов', icon: Archive, badge: '📁' },
         { id: 'yandexMap', label: 'Яндекс.Карта (GPS)', icon: MapPin, badge: 'Live' },
       ]
     },

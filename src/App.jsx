@@ -1,30 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import DashboardView from './components/DashboardView';
-import AnalyticsView from './components/AnalyticsView';
 import KanbanView from './components/KanbanView';
 import OrdersTableView from './components/OrdersTableView';
 import ClientsView from './components/ClientsView';
 import CalculatorView from './components/CalculatorView';
-import FinanceSalaryView from './components/FinanceSalaryView';
 import SMSManagementView from './components/SMSManagementView';
-import AdminCardView from './components/AdminCardView';
-import ServicesCatalogView from './components/ServicesCatalogView';
-import YandexLogisticsMap from './components/YandexLogisticsMap';
 import OrderModal from './components/OrderModal';
 import NotificationDrawer from './components/NotificationDrawer';
 import AuthModal from './components/AuthModal';
 
-// Dedicated Role Workspace Portals
-import CourierPortal from './components/roles/CourierPortal';
-import DispatcherPortal from './components/roles/DispatcherPortal';
-import WasherPortal from './components/roles/WasherPortal';
+// Lazy-loaded heavy views for code-splitting & fast mobile startup
+const AnalyticsView = lazy(() => import('./components/AnalyticsView'));
+const FinanceSalaryView = lazy(() => import('./components/FinanceSalaryView'));
+const AdminCardView = lazy(() => import('./components/AdminCardView'));
+const ServicesCatalogView = lazy(() => import('./components/ServicesCatalogView'));
+const YandexLogisticsMap = lazy(() => import('./components/YandexLogisticsMap'));
+const ArchivedOrdersView = lazy(() => import('./components/ArchivedOrdersView'));
 
-import { initialOrders, initialClients, activityLogs as initialLogs } from './data/initialData';
+// Dedicated Role Workspace Portals (Lazy Loaded)
+const CourierPortal = lazy(() => import('./components/roles/CourierPortal'));
+const DispatcherPortal = lazy(() => import('./components/roles/DispatcherPortal'));
+const WasherPortal = lazy(() => import('./components/roles/WasherPortal'));
+
+import { activityLogs as initialLogs, initialClients } from './data/initialData';
 import { triggerAutoSMSForOrder } from './services/smsService';
 import { 
   requestNotificationPermission, 
@@ -53,8 +55,14 @@ import {
   deleteSupabaseClient,
   subscribeToSupabaseRealtime 
 } from './services/supabaseService';
-import { flushOfflineQueue, enqueueOfflineMutation } from './services/offlineQueue';
+import { flushOfflineQueue } from './services/offlineQueue';
 import { fetchInitialServerState, subscribeToRealtimeSync, broadcastDataChange } from './services/syncEngine';
+
+const PageLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: 'var(--text-muted)' }}>
+    <div style={{ fontSize: '14px', fontWeight: '600' }}>Загрузка модуля...</div>
+  </div>
+);
 
 export default function App() {
   // Auth Session State
@@ -76,7 +84,7 @@ export default function App() {
 
   // Production State strictly driven by Supabase Postgres DB
   const [orders, setOrdersState] = useState([]);
-  const [clients, setClientsState] = useState([]);
+  const [clients, setClientsState] = useState(initialClients || []);
   const [logs, setLogs] = useState(initialLogs || []);
   const [registeredUsers, setRegisteredUsersState] = useState(() => {
     try {
@@ -273,7 +281,7 @@ export default function App() {
             }
 
             // Trigger auto SMS dispatcher
-            triggerAutoSMSForOrder(nextOrder, oldStatus, prevOrder.paymentStatus);
+            triggerAutoSMSForOrder(nextOrder, oldStatus, prevOrder.paymentStatus, registeredUsers);
           }
         }
       });
@@ -356,7 +364,7 @@ export default function App() {
         setRegisteredUsersState(dbUsers);
         hasSuccess = true;
       }
-      if (Array.isArray(dbClients)) {
+      if (Array.isArray(dbClients) && dbClients.length > 0) {
         setClientsState(dbClients);
         hasSuccess = true;
       }
@@ -431,6 +439,31 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Native Android Back Button Handler via Capacitor
+  useEffect(() => {
+    let listenerHandler = null;
+    try {
+      CapApp.addListener('backButton', ({ canGoBack }) => {
+        if (isNewOrderModalOpen || selectedOrder) {
+          setIsNewOrderModalOpen(false);
+          setSelectedOrder(null);
+        } else if (isNotificationsOpen) {
+          setIsNotificationsOpen(false);
+        } else if (!canGoBack) {
+          CapApp.exitApp();
+        }
+      }).then(handler => {
+        listenerHandler = handler;
+      }).catch(() => {});
+    } catch (err) {}
+
+    return () => {
+      if (listenerHandler && typeof listenerHandler.remove === 'function') {
+        listenerHandler.remove();
+      }
+    };
+  }, [isNewOrderModalOpen, selectedOrder, isNotificationsOpen]);
 
   const handleLogin = (userSession) => {
     setCurrentUser(userSession);
@@ -526,13 +559,15 @@ export default function App() {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
         <OfflineBanner />
-        <CourierPortal 
-          orders={orders} 
-          setOrders={setOrders} 
-          currentUser={currentUser} 
-          onLogout={handleLogout} 
-          registeredUsers={registeredUsers}
-        />
+        <Suspense fallback={<PageLoader />}>
+          <CourierPortal 
+            orders={orders} 
+            setOrders={setOrders} 
+            currentUser={currentUser} 
+            onLogout={handleLogout} 
+            registeredUsers={registeredUsers}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -542,12 +577,15 @@ export default function App() {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
         <OfflineBanner />
-        <WasherPortal 
-          orders={orders} 
-          setOrders={setOrders} 
-          currentUser={currentUser} 
-          onLogout={handleLogout} 
-        />
+        <Suspense fallback={<PageLoader />}>
+          <WasherPortal 
+            orders={orders} 
+            setOrders={setOrders} 
+            currentUser={currentUser} 
+            onLogout={handleLogout} 
+            registeredUsers={registeredUsers}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -557,15 +595,17 @@ export default function App() {
     return (
       <div style={{ background: 'var(--bg-main)', minHeight: '100vh', padding: '16px 12px 30px 12px' }}>
         <OfflineBanner />
-        <DispatcherPortal 
-          orders={orders} 
-          setOrders={setOrders} 
-          setSelectedOrder={setSelectedOrder}
-          onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
-          currentUser={currentUser} 
-          onLogout={handleLogout} 
-          registeredUsers={registeredUsers}
-        />
+        <Suspense fallback={<PageLoader />}>
+          <DispatcherPortal 
+            orders={orders} 
+            setOrders={setOrders} 
+            setSelectedOrder={setSelectedOrder}
+            onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+            currentUser={currentUser} 
+            onLogout={handleLogout} 
+            registeredUsers={registeredUsers}
+          />
+        </Suspense>
         {(selectedOrder || isNewOrderModalOpen) && (
         <OrderModal 
           order={presetOrderData ? { ...presetOrderData, id: null, clientName: '', phone: '+998 ', status: 'new', paymentStatus: 'unpaid' } : selectedOrder}
@@ -607,95 +647,104 @@ export default function App() {
 
         <main className="page-wrapper">
           <OfflineBanner />
-          {activeTab === 'dashboard' && (
-            <DashboardView 
-              orders={orders} 
-              clients={clients} 
-              activityLogs={logs}
-              onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
-              setActiveTab={setActiveTab}
-              setSelectedOrder={setSelectedOrder}
-            />
-          )}
+          <Suspense fallback={<PageLoader />}>
+            {activeTab === 'dashboard' && (
+              <DashboardView 
+                orders={orders} 
+                clients={clients} 
+                activityLogs={logs}
+                onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+                setActiveTab={setActiveTab}
+                setSelectedOrder={setSelectedOrder}
+              />
+            )}
 
-          {activeTab === 'analytics' && (
-            <AnalyticsView 
-              orders={orders} 
-              clients={clients} 
-            />
-          )}
+            {activeTab === 'analytics' && (
+              <AnalyticsView 
+                orders={orders} 
+                clients={clients} 
+              />
+            )}
 
-          {activeTab === 'kanban' && (
-            <KanbanView 
-              orders={orders} 
-              setOrders={setOrders} 
-              setSelectedOrder={setSelectedOrder}
-              onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
-            />
-          )}
+            {activeTab === 'kanban' && (
+              <KanbanView 
+                orders={orders} 
+                setOrders={setOrders} 
+                setSelectedOrder={setSelectedOrder}
+                onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+              />
+            )}
 
-          {activeTab === 'ordersTable' && (
-            <OrdersTableView 
-              orders={orders} 
-              setOrders={setOrders} 
-              setSelectedOrder={setSelectedOrder}
-              onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
-              searchQuery={searchQuery}
-            />
-          )}
+            {activeTab === 'ordersTable' && (
+              <OrdersTableView 
+                orders={orders} 
+                setOrders={setOrders} 
+                setSelectedOrder={setSelectedOrder}
+                onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+                searchQuery={searchQuery}
+              />
+            )}
 
-          {activeTab === 'yandexMap' && (
-            <YandexLogisticsMap 
-              orders={orders}
-              setOrders={setOrders}
-              setSelectedOrder={setSelectedOrder}
-              registeredUsers={registeredUsers}
-            />
-          )}
+            {activeTab === 'archive' && (
+              <ArchivedOrdersView 
+                orders={orders} 
+                setSelectedOrder={setSelectedOrder}
+              />
+            )}
 
-          {activeTab === 'clients' && (
-            <ClientsView 
-              clients={clients} 
-              setClients={setClients} 
-              searchQuery={searchQuery}
-              onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
-            />
-          )}
+            {activeTab === 'yandexMap' && (
+              <YandexLogisticsMap 
+                orders={orders}
+                setOrders={setOrders}
+                setSelectedOrder={setSelectedOrder}
+                registeredUsers={registeredUsers}
+              />
+            )}
 
-          {activeTab === 'calculator' && (
-            <CalculatorView 
-              onOpenNewOrderWithPreset={handleOpenCalculatorPreset}
-            />
-          )}
+            {activeTab === 'clients' && (
+              <ClientsView 
+                clients={clients} 
+                setClients={setClients} 
+                searchQuery={searchQuery}
+                onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+              />
+            )}
 
-          {activeTab === 'finance' && (
-            <FinanceSalaryView 
-              orders={orders} 
-              setOrders={setOrders}
-              setSelectedOrder={setSelectedOrder}
-              registeredUsers={registeredUsers}
-              setRegisteredUsers={setRegisteredUsers}
-            />
-          )}
+            {activeTab === 'calculator' && (
+              <CalculatorView 
+                onOpenNewOrderWithPreset={handleOpenCalculatorPreset}
+              />
+            )}
 
-          {activeTab === 'smsControl' && (
-            <SMSManagementView />
-          )}
+            {activeTab === 'finance' && (
+              <FinanceSalaryView 
+                orders={orders} 
+                setOrders={setOrders}
+                setSelectedOrder={setSelectedOrder}
+                registeredUsers={registeredUsers}
+                setRegisteredUsers={setRegisteredUsers}
+              />
+            )}
 
-          {activeTab === 'adminCard' && (
-            <AdminCardView 
-              orders={orders}
-              setOrders={setOrders}
-              clients={clients}
-              currentUser={currentUser}
-              registeredUsers={registeredUsers}
-              setRegisteredUsers={setRegisteredUsers}
-            />
-          )}
+            {activeTab === 'smsControl' && (
+              <SMSManagementView />
+            )}
 
-          {activeTab === 'servicesCatalog' && (
-            <ServicesCatalogView />
-          )}
+            {activeTab === 'adminCard' && (
+              <AdminCardView 
+                orders={orders}
+                setOrders={setOrders}
+                clients={clients}
+                currentUser={currentUser}
+                registeredUsers={registeredUsers}
+                setRegisteredUsers={setRegisteredUsers}
+              />
+            )}
+
+            {activeTab === 'servicesCatalog' && (
+              <ServicesCatalogView />
+            )}
+          </Suspense>
         </main>
       </div>
 

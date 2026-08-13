@@ -19,15 +19,13 @@ import {
   Trash2,
   Users,
   FileText,
-  TrendingDown,
-  AlertCircle
+  TrendingDown
 } from 'lucide-react';
 import { syncFinanceToGoogleSheets } from '../services/googleSheetsService';
 
 export default function FinanceSalaryView({ 
   orders = [], 
   setOrders, 
-  setSelectedOrder,
   registeredUsers = [],
   setRegisteredUsers
 }) {

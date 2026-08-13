@@ -417,3 +417,39 @@ img, video, iframe, canvas, svg {
     text-align: center;
   }
 }
+
+/* ==========================================================================
+   PRINT STYLES: Ensures thermal receipts & PDF print crystal clear with zero blank pages
+   ========================================================================== */
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  aside, nav, .mobile-bottom-nav, .app-container > aside, .btn, button, .modal-backdrop {
+    display: none !important;
+  }
+
+  #printable-receipt-area {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+

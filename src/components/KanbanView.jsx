@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { saveSupabaseOrder } from '../services/supabaseService';
+import { syncOrderToGoogleSheets } from '../services/googleSheetsService';
 import { DeliveryDeadlineBadge } from '../utils/deliveryDeadline';
 
 export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpenNewOrder }) {
@@ -32,7 +33,7 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
 
   const moveStatus = (orderId, direction) => {
     setOrders(prevOrders => prevOrders.map(order => {
-      if (order.id === orderId) {
+      if (order.id === orderId || order.tempId === orderId) {
         const currentIndex = statusFlow.indexOf(order.status);
         const nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
         if (nextIndex >= 0 && nextIndex < statusFlow.length) {
@@ -43,7 +44,7 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
             paymentStatus: nextStatus === 'done' ? 'paid' : order.paymentStatus 
           };
           saveSupabaseOrder(updatedOrder);
-          syncOrderToGoogleSheets(updatedOrder);
+          syncOrderToGoogleSheets(updatedOrder).catch(() => {});
           return updatedOrder;
         }
       }
@@ -53,13 +54,14 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
 
   const setExactStatus = (orderId, targetStatus) => {
     setOrders(prevOrders => prevOrders.map(order => {
-      if (order.id === orderId) {
+      if (order.id === orderId || order.tempId === orderId) {
         const updatedOrder = { 
           ...order, 
           status: targetStatus,
           paymentStatus: targetStatus === 'done' ? 'paid' : order.paymentStatus 
         };
         saveSupabaseOrder(updatedOrder);
+        syncOrderToGoogleSheets(updatedOrder).catch(() => {});
         return updatedOrder;
       }
       return order;
@@ -168,10 +170,16 @@ export default function KanbanView({ orders, setOrders, setSelectedOrder, onOpen
                 </span>
               </div>
 
-              {/* Column Total Price Summary */}
-              <div style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right' }}>
-                Сумма: <strong style={{ color: '#fff' }}>{colTotal.toLocaleString()} сум</strong>
-              </div>
+              {/* Column Total Price Summary ONLY for ready and done orders */}
+              {(col.id === 'delivery' || col.id === 'done') ? (
+                <div style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right' }}>
+                  Сумма готовых: <strong style={{ color: '#34d399' }}>{colTotal.toLocaleString()} сум</strong>
+                </div>
+              ) : (
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right' }}>
+                  <i>Оплата после замера/готовности</i>
+                </div>
+              )}
 
               {/* Cards List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: '120px' }}>

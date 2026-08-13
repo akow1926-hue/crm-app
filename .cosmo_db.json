@@ -1,5 +1,568 @@
 {
-  "orders": [],
+  "orders": [
+    {
+      "id": "5267",
+      "tempId": "5267",
+      "clientName": "aokbir",
+      "phone": "+998 200022099",
+      "clientPhone": "+998 200022099",
+      "address": "akobir",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 105000,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "delivery",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": "2026-08-13T15:01:26.797Z",
+      "items": [
+        {
+          "name": "Гилем (2.5м x 3м = 7.5 м²)",
+          "serviceName": "Гилем",
+          "unit": "м²",
+          "width": 2.5,
+          "length": 3,
+          "area": 7.5,
+          "qty": 1,
+          "price": 14000,
+          "total": 105000
+        }
+      ],
+      "notes": "[PickupDate: 2026-08-13T15:01:26.797Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Гилем: 1 м². Срок доставки: 5 дн.  ] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)]",
+      "comment": "[PickupDate: 2026-08-13T15:01:26.797Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Гилем: 1 м². Срок доставки: 5 дн.  ] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)] | [Замеры в цеху: Гилем (2.5м x 3м = 7.5 м²)]",
+      "createdDate": "14.08.2026, 01:01:27",
+      "area": 7.5
+    },
+    {
+      "id": null,
+      "tempId": "TMP-1786631569849",
+      "clientName": "nasim",
+      "phone": "+998 933347722",
+      "clientPhone": "+998 933347722",
+      "address": "a",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "new",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": "2",
+          "name": "Мойка ковров",
+          "unit": "м²",
+          "price": 15000,
+          "total": 0,
+          "serviceId": "S-1"
+        }
+      ],
+      "notes": "[DeliveryDays: 5] [Район: Сиёб] ",
+      "comment": "[DeliveryDays: 5] [Район: Сиёб] ",
+      "createdDate": "13.08.2026, 19:33:18"
+    },
+    {
+      "id": "5266",
+      "tempId": "5266",
+      "clientName": "Farzona",
+      "phone": "+998979155804",
+      "clientPhone": "+998979155804",
+      "address": "Bulvar pushti Shaboda",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 1,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 16000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб] Farzona \nSrochni tarif 4+6=24m²×16000 | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб] Farzona \nSrochni tarif 4+6=24m²×16000 | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:44:02"
+    },
+    {
+      "id": "5265",
+      "tempId": "5265",
+      "clientName": "Roila",
+      "phone": "+998915548801",
+      "clientPhone": "+998915548801",
+      "address": "Kaxramon 27",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 1,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:40:40"
+    },
+    {
+      "id": "5264",
+      "tempId": "5264",
+      "clientName": "zarina",
+      "phone": "+998915536661",
+      "clientPhone": "+998915536661",
+      "address": "Korasuv 2. 164",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 8,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        },
+        {
+          "qty": 1,
+          "name": "Мойка курпачи (метр)",
+          "unit": "метр",
+          "price": 15000,
+          "total": 0,
+          "serviceName": "Мойка курпачи"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:39:06"
+    },
+    {
+      "id": "5263",
+      "tempId": "5263",
+      "clientName": "Munis",
+      "phone": "+998704772599",
+      "clientPhone": "+998704772599",
+      "address": "Aeraport",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 2,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:37:39"
+    },
+    {
+      "id": "5262",
+      "tempId": "5262",
+      "clientName": "SHoxrux",
+      "phone": "+998701834405",
+      "clientPhone": "+998701834405",
+      "address": "tayloq sochak norka barr",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 2,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:36:53"
+    },
+    {
+      "id": "5261",
+      "tempId": "5261",
+      "clientName": "Marjona",
+      "phone": "+998777075877",
+      "clientPhone": "+998777075877",
+      "address": "Choraxa fatir (sardor)",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 1,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:35:30"
+    },
+    {
+      "id": "5260",
+      "tempId": "5260",
+      "clientName": "dilfuza",
+      "phone": "+998950226267",
+      "clientPhone": "+998950226267",
+      "address": "Gagarin mintut18",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 3,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:34:00"
+    },
+    {
+      "id": "5259",
+      "tempId": "5259",
+      "clientName": "sHAXBOZ",
+      "phone": "+998950449585",
+      "clientPhone": "+998950449585",
+      "address": "Ulugbek pushti zapchas bozor",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 1,
+          "name": "parda tur (метр)",
+          "unit": "метр",
+          "price": 15000,
+          "total": 0,
+          "serviceName": "parda tur"
+        },
+        {
+          "qty": 2,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        },
+        {
+          "qty": 1,
+          "name": "Мойка курпачи (метр)",
+          "unit": "метр",
+          "price": 70000,
+          "total": 0,
+          "serviceName": "Мойка курпачи"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:31:57"
+    },
+    {
+      "id": "5258",
+      "tempId": "5258",
+      "clientName": "MUXLISA",
+      "phone": "+998915542443",
+      "clientPhone": "+998915542443",
+      "address": "DAXBET",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 12,
+          "name": "parda tur (метр)",
+          "unit": "метр",
+          "price": 15000,
+          "total": 0,
+          "serviceName": "parda tur"
+        }
+      ],
+      "notes": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "comment": "[Район: Сиёб]  | GPS: 39.659110, 66.954854",
+      "createdDate": "13.08.2026, 10:30:12"
+    },
+    {
+      "id": "5257",
+      "tempId": "5257",
+      "clientName": "Muxlisa",
+      "phone": "+998 915542443",
+      "clientPhone": "+998 915542443",
+      "address": "daxbet",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": null,
+      "items": [
+        {
+          "qty": 12,
+          "name": "parda tur (метр)",
+          "unit": "метр",
+          "price": 15000,
+          "total": 0,
+          "serviceName": "parda tur"
+        }
+      ],
+      "notes": "[Район: Сиёб] ",
+      "comment": "[Район: Сиёб] ",
+      "createdDate": "13.08.2026, 10:26:34"
+    },
+    {
+      "id": "5256",
+      "tempId": "5256",
+      "clientName": "Gulzoda",
+      "phone": "+998 991201743",
+      "clientPhone": "+998 991201743",
+      "address": "Корасув 69 2 подёз 2 этаж",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": "2026-08-13T07:25:36.118Z",
+      "items": [
+        {
+          "qty": 5,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[PickupDate: 2026-08-13T07:25:36.118Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Мойка ковров: 5 м². Срок доставки: 5 дн.  ]",
+      "comment": "[PickupDate: 2026-08-13T07:25:36.118Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Мойка ковров: 5 м². Срок доставки: 5 дн.  ]",
+      "createdDate": "13.08.2026, 10:25:26"
+    },
+    {
+      "id": "5255",
+      "tempId": "5255",
+      "clientName": "guli",
+      "phone": "+998 973610777",
+      "clientPhone": "+998 973610777",
+      "address": "корасув 80, 17 кв 4 этаж",
+      "district": "Сиёб",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 0,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "cleaning",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 5,
+      "pickupDate": "2026-08-13T07:25:19.187Z",
+      "items": [
+        {
+          "qty": 1,
+          "name": "Мойка ковров (м²)",
+          "unit": "м²",
+          "price": 14000,
+          "total": 0,
+          "serviceName": "Мойка ковров"
+        }
+      ],
+      "notes": "[PickupDate: 2026-08-13T07:25:19.187Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Мойка ковров: 1 м². Срок доставки: 5 дн.  ]",
+      "comment": "[PickupDate: 2026-08-13T07:25:19.187Z] [DeliveryDays: 5] [Район: Сиёб]  | [Забор курьером: Мойка ковров: 1 м². Срок доставки: 5 дн.  ]",
+      "createdDate": "13.08.2026, 10:25:09"
+    },
+    {
+      "id": "5254",
+      "tempId": "5254",
+      "clientName": "DILNOZA",
+      "phone": "+998773210443",
+      "clientPhone": "+998773210443",
+      "address": "GULBOG'",
+      "district": "Самаркандский р-н",
+      "gpsLocation": "",
+      "serviceType": "",
+      "totalAmount": 695240,
+      "paidAmount": 0,
+      "paymentStatus": "unpaid",
+      "status": "delivery",
+      "assignedCourier": "AKOBIRJAN",
+      "courier": "AKOBIRJAN",
+      "washer": "",
+      "urgent": false,
+      "deliveryDays": 2,
+      "pickupDate": "2026-08-13T04:32:51.308Z",
+      "items": [
+        {
+          "qty": 1,
+          "name": "Мойка ковров #1",
+          "unit": "м²",
+          "price": 14000,
+          "total": 158340,
+          "serviceId": "S-1"
+        },
+        {
+          "qty": 1,
+          "name": "Мойка ковров #2",
+          "unit": "м²",
+          "price": 14000,
+          "total": 198660,
+          "serviceId": "S-1"
+        },
+        {
+          "qty": 1,
+          "name": "Мойка ковров #3",
+          "unit": "м²",
+          "price": 14000,
+          "total": 58240,
+          "serviceId": "S-1"
+        },
+        {
+          "qty": 4,
+          "name": "Kurpa",
+          "unit": "шт",
+          "price": "70000",
+          "total": 280000,
+          "serviceId": "S-0660"
+        }
+      ],
+      "notes": "[DeliveryDays: 2] [PickupDate: 2026-08-13T04:32:51.308Z] [Район: Самаркандский р-н]  | [Забор курьером: Мойка ковров: 2 м². Срок доставки: 2 дн.  ] | [Замеры в цеху: Мойка ковров #1 (2.9м x 3.9м = 11.31 м²) | Мойка ковров #2 (3.3м x 4.3м = 14.19 м²) | Мойка ковров #3 (2.6м x 1.6м = 4.16 м²) | odeal (4 шт)]",
+      "comment": "[DeliveryDays: 2] [PickupDate: 2026-08-13T04:32:51.308Z] [Район: Самаркандский р-н]  | [Забор курьером: Мойка ковров: 2 м². Срок доставки: 2 дн.  ] | [Замеры в цеху: Мойка ковров #1 (2.9м x 3.9м = 11.31 м²) | Мойка ковров #2 (3.3м x 4.3м = 14.19 м²) | Мойка ковров #3 (2.6м x 1.6м = 4.16 м²) | odeal (4 шт)]",
+      "createdDate": "13.08.2026, 09:32:52"
+    }
+  ],
   "users": [
     {
       "id": "USR-1",
@@ -38,14 +601,14 @@
     },
     "AKOBIRJAN": {
       "name": "AKOBIRJAN",
-      "lat": 39.64,
-      "lng": 66.92,
+      "lat": 39.602003047574186,
+      "lng": 67.03813843546868,
       "speed": 0,
       "heading": 0,
-      "accuracy": 50000,
+      "accuracy": 183,
       "battery": 95,
-      "status": "Активен (Периодический пинг)",
-      "lastUpdate": "2026-08-09T19:44:15.307Z",
+      "status": "В движении (GPS передаётся)",
+      "lastUpdate": "2026-08-13T15:03:54.864Z",
       "isOnline": true
     },
     "Акобир (Курьер)": {
@@ -60,5 +623,26 @@
       "lastUpdate": "2026-08-09T19:36:15.372Z",
       "isOnline": true
     }
+  },
+  "tgBotConfig": {
+    "botToken": "",
+    "botUsername": "CosmoGroupNotifier_bot",
+    "channelId": "",
+    "enabledEvents": {
+      "created": true,
+      "pickup": true,
+      "ready": true,
+      "done": true
+    },
+    "status": "offline"
+  },
+  "smsConfig": {
+    "provider": "eskiz",
+    "email": "akow1926@gmail.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODkyNDM5NTgsImlhdCI6MTc4NjY1MTk1OCwicm9sZSI6InVzZXIiLCJzaWduIjoiZDNlNGY3YmY4ZDY0MGMwN2U4Yjk4ZTgzZGQ5OTJiNjdjYTdkMzY5ZWYyYzE1YThlMDM5ZDc3YmI0MTlmMzg4NiIsInN1YiI6IjE2ODE1In0.lxNmB9DIkYGUxl4Pg-ZtbiERJcpfUvLleeNk4f50AZI",
+    "fromName": "4546",
+    "accountName": "\"CLEANERS BIO SERVICE\" MCHJ",
+    "balanceAmount": 303120,
+    "smsCountRemaining": 6062
   }
 }

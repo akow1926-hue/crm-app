@@ -31,7 +31,17 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
       String(order.id || '').includes(q) ||
       String(order.address || '').toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter === 'new') {
+      matchesStatus = order.status === 'new' || order.status === 'pickup';
+    } else if (statusFilter === 'ready_delivery') {
+      matchesStatus = order.status === 'ready' || order.status === 'delivery';
+    } else if (statusFilter === 'urgent') {
+      matchesStatus = !!order.urgent;
+    } else if (statusFilter !== 'all') {
+      matchesStatus = order.status === statusFilter;
+    }
+
     const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
 
     return matchesSearch && matchesStatus && matchesPayment;
@@ -85,39 +95,118 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="glass-card" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* Filter Toolbar & Quick Filter Chips */}
+      <div className="glass-card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Filter size={16} color="var(--text-dim)" />
-          <span style={{ fontSize: '13px', fontWeight: '600' }}>Фильтры:</span>
+          <span style={{ fontSize: '13px', fontWeight: '600' }}>Быстрый фильтр:</span>
         </div>
 
-        <select 
-          value={statusFilter} 
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="select-field"
-          style={{ width: '180px', fontSize: '13px' }}
-        >
-          <option value="all">Все статусы</option>
-          <option value="new">Ожидает забора</option>
-          <option value="pickup">Забор курьером</option>
-          <option value="cleaning">В цеху (Стирка)</option>
-          <option value="ready">Готов к отправке</option>
-          <option value="delivery">На доставке</option>
-          <option value="done">Выполнен</option>
-        </select>
+        {/* Quick Filter Pill Buttons */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => { setStatusFilter('all'); setPaymentFilter('all'); }}
+            className={`btn ${statusFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '6px 12px', fontSize: '12px', borderRadius: 'var(--radius-full)' }}
+          >
+            📋 Все ({orders.length})
+          </button>
 
-        <select 
-          value={paymentFilter} 
-          onChange={(e) => setPaymentFilter(e.target.value)}
-          className="select-field"
-          style={{ width: '180px', fontSize: '13px' }}
-        >
-          <option value="all">Все оплаты</option>
-          <option value="paid">Оплачено</option>
-          <option value="unpaid">Не оплачено</option>
-          <option value="partial">Частично</option>
-        </select>
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'new' ? 'all' : 'new')}
+            className={`btn ${statusFilter === 'new' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              borderRadius: 'var(--radius-full)',
+              background: statusFilter === 'new' ? '#38bdf8' : 'rgba(56, 189, 248, 0.12)',
+              color: statusFilter === 'new' ? '#000' : '#38bdf8',
+              borderColor: 'rgba(56, 189, 248, 0.4)',
+              fontWeight: '700'
+            }}
+          >
+            📥 Новые ({orders.filter(o => o.status === 'new' || o.status === 'pickup').length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
+            className={`btn ${statusFilter === 'cleaning' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              borderRadius: 'var(--radius-full)',
+              background: statusFilter === 'cleaning' ? '#facc15' : 'rgba(250, 204, 21, 0.12)',
+              color: statusFilter === 'cleaning' ? '#000' : '#facc15',
+              borderColor: 'rgba(250, 204, 21, 0.4)',
+              fontWeight: '700'
+            }}
+          >
+            🧼 В цеху ({orders.filter(o => o.status === 'cleaning').length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'ready_delivery' ? 'all' : 'ready_delivery')}
+            className={`btn ${statusFilter === 'ready_delivery' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              borderRadius: 'var(--radius-full)',
+              background: statusFilter === 'ready_delivery' ? '#10b981' : 'rgba(16, 185, 129, 0.12)',
+              color: statusFilter === 'ready_delivery' ? '#fff' : '#34d399',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              fontWeight: '700'
+            }}
+          >
+            📦 Готовые ({orders.filter(o => o.status === 'ready' || o.status === 'delivery').length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter(statusFilter === 'urgent' ? 'all' : 'urgent')}
+            className={`btn ${statusFilter === 'urgent' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              borderRadius: 'var(--radius-full)',
+              background: statusFilter === 'urgent' ? '#f43f5e' : 'rgba(244, 63, 94, 0.12)',
+              color: statusFilter === 'urgent' ? '#fff' : '#f87171',
+              borderColor: 'rgba(244, 63, 94, 0.4)',
+              fontWeight: '700'
+            }}
+          >
+            🔥 Срочные ({orders.filter(o => o.urgent).length})
+          </button>
+        </div>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          <select 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="select-field"
+            style={{ width: '160px', fontSize: '12.5px' }}
+          >
+            <option value="all">Все статусы</option>
+            <option value="new">Ожидает забора</option>
+            <option value="pickup">Забор курьером</option>
+            <option value="cleaning">В цеху (Стирка)</option>
+            <option value="ready">Готов к отправке</option>
+            <option value="delivery">На доставке</option>
+            <option value="ready_delivery">Готовые и На доставке</option>
+            <option value="urgent">Только Срочные</option>
+            <option value="done">Выполнен</option>
+          </select>
+
+          <select 
+            value={paymentFilter} 
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="select-field"
+            style={{ width: '150px', fontSize: '12.5px' }}
+          >
+            <option value="all">Все оплаты</option>
+            <option value="paid">Оплачено</option>
+            <option value="unpaid">Не оплачено</option>
+            <option value="partial">Частично</option>
+          </select>
+        </div>
 
         {selectedIds.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>

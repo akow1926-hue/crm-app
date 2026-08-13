@@ -22,6 +22,12 @@ function loadDb() {
       channelId: '',
       enabledEvents: { created: true, pickup: true, ready: true, done: true },
       status: process.env.TELEGRAM_BOT_TOKEN ? 'online' : 'offline'
+    },
+    smsConfig: {
+      provider: 'eskiz',
+      email: 'info@cosmocleaning.uz',
+      token: process.env.ESKIZ_TOKEN || '',
+      fromName: '4546'
     }
   };
 
@@ -211,30 +217,61 @@ function crmRealtimeSyncPlugin() {
           }
         }
 
-        // 7. SMS Gateway Proxy: POST /api/sms
-        if (url.startsWith('/api/sms') && req.method === 'POST') {
+        // 7.1 SMS Gateway Auth Proxy: POST /api/sms/login
+        if (url === '/api/sms/login' && req.method === 'POST') {
+          readJson(async (data) => {
+            try {
+              const { email, password } = data;
+              const formData = new FormData();
+              formData.append('email', email);
+              formData.append('password', password);
+
+              const response = await fetch('https://notify.eskiz.uz/api/auth/login', {
+                method: 'POST',
+                body: formData
+              });
+              const resData = await response.json().catch(() => ({}));
+              if (response.ok && (resData?.data?.token || resData?.token)) {
+                const tokenVal = resData?.data?.token || resData?.token;
+                db.smsConfig = { ...(db.smsConfig || {}), email, token: tokenVal };
+                saveDb();
+                broadcastSSE('sms_config', db.smsConfig);
+              }
+              res.writeHead(response.status, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(resData));
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ status: 'error', message: err.message || 'SMS auth error' }));
+            }
+          });
+          return;
+        }
+
+        // 7.2 SMS Gateway Proxy: POST /api/sms
+        if (url === '/api/sms' && req.method === 'POST') {
           readJson(async (data) => {
             try {
               const { mobile_phone, message, from, token } = data;
-              if (!token) {
+              const cleanToken = String(token || db.smsConfig?.token || '').replace(/^Bearer\s+/i, '').trim();
+              if (!cleanToken) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'error', message: 'Bearer token is required' }));
                 return;
               }
               const cleanPhone = String(mobile_phone || '').replace(/[^0-9]/g, '');
+              const formData = new FormData();
+              formData.append('mobile_phone', cleanPhone);
+              formData.append('message', message);
+              formData.append('from', from || '4546');
+
               const response = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
+                  'Authorization': `Bearer ${cleanToken}`
                 },
-                body: JSON.stringify({
-                  mobile_phone: cleanPhone,
-                  message: message,
-                  from: from || '4546'
-                })
+                body: formData
               });
-              const resData = await response.json();
+              const resData = await response.json().catch(() => ({}));
               res.writeHead(response.status, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify(resData));
             } catch (err) {
@@ -242,6 +279,43 @@ function crmRealtimeSyncPlugin() {
               res.end(JSON.stringify({ status: 'error', message: err.message || 'SMS proxy error' }));
             }
           });
+          return;
+        }
+
+        // 7.3 SMS Balance Proxy: GET / POST /api/sms/balance
+        if (url.startsWith('/api/sms/balance')) {
+          const handleBalance = async (tokenOverride) => {
+            try {
+              const cleanToken = String(tokenOverride || db.smsConfig?.token || '').replace(/^Bearer\s+/i, '').trim();
+              if (!cleanToken) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'error', message: 'Bearer token is required' }));
+                return;
+              }
+
+              const response = await fetch('https://notify.eskiz.uz/api/auth/user', {
+                headers: { 'Authorization': `Bearer ${cleanToken}` }
+              });
+              const data = await response.json().catch(() => ({}));
+              if (response.ok && data?.data?.balance !== undefined) {
+                const balanceUzs = Number(data.data.balance || 0);
+                db.smsConfig = { ...(db.smsConfig || {}), balanceAmount: balanceUzs, accountName: data.data.name };
+                saveDb();
+                broadcastSSE('sms_config', db.smsConfig);
+              }
+              res.writeHead(response.status, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(data));
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ status: 'error', message: err.message || 'Balance check error' }));
+            }
+          };
+
+          if (req.method === 'POST') {
+            readJson((data) => handleBalance(data?.token));
+          } else {
+            handleBalance();
+          }
           return;
         }
 

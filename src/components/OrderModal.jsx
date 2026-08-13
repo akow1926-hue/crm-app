@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
-import { smsTemplates, sendSMSNotification } from '../services/smsService';
+import { smsTemplates, sendSMSNotification, INSTAGRAM_QR_BASE64 } from '../services/smsService';
 import { sendTelegramOrderCard, getTelegramBotConfig } from '../services/telegramBotService';
+import { printOrderReceipt } from '../utils/printReceipt';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [] }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -185,113 +186,10 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
   };
 
   const printReceipt = () => {
-    const printWindow = window.open('', '_blank', 'width=420,height=650');
-    const totalSum = formData.totalAmount || fixedItemsTotal || 0;
-    const paidSum = formData.paidAmount !== undefined ? formData.paidAmount : (formData.paymentStatus === 'paid' ? totalSum : 0);
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Чек заказа №${formData.id || 'Б/Н'}</title>
-          <style>
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-              padding: 24px; 
-              font-size: 12.5px; 
-              color: #000000;
-              line-height: 1.45;
-              background: #ffffff;
-            }
-            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
-            .header h1 { font-size: 18px; margin: 0; font-weight: 900; letter-spacing: 0.5px; }
-            .header .sub { font-size: 12.5px; font-weight: 700; margin-top: 2px; }
-            .section { border-bottom: 1px dashed #999; padding-bottom: 8px; margin-bottom: 8px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
-            th { text-align: left; border-bottom: 1px solid #000; padding: 4px 0; font-weight: 700; }
-            td { padding: 5px 0; border-bottom: 1px dashed #eee; vertical-align: top; }
-            .total-section { border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-            .row-flex { display: flex; justify-content: space-between; margin-bottom: 3px; }
-            .bold { font-weight: 800; }
-          </style>
-        </head>
-        <body>
-          <!-- 1. Название -->
-          <div class="header">
-            <h1>Cosmo Cleaning</h1>
-            <div class="sub">Чек заказа №${formData.id || 'Б/Н'}</div>
-          </div>
-
-          <!-- 2. Дата и время оформления, дата и время окончания -->
-          <div class="section">
-            <div><strong>Дата и время оформления:</strong> ${formData.createdDate || new Date().toLocaleString('ru-RU')}</div>
-            <div><strong>Дата и время окончания:</strong> ${new Date().toLocaleString('ru-RU')}</div>
-          </div>
-
-          <!-- 3. Данные клиента: имя, телефон, адрес -->
-          <div class="section">
-            <div><strong>Клиент:</strong> ${formData.clientName || 'Клиент'}</div>
-            <div><strong>Телефон:</strong> ${formData.phone || '-'}</div>
-            <div><strong>Адрес:</strong> ${formData.district ? `[${formData.district}] ` : ''}${formData.address || '-'}${formData.landmark ? ` (${formData.landmark})` : ''}</div>
-          </div>
-
-          <!-- 4. Кто обслуживал: курьер и диспетчер -->
-          <div class="section">
-            <div><strong>Курьер (доставил):</strong> ${formData.assignedCourier || '-'}</div>
-            <div><strong>Диспетчер (принял):</strong> ${formData.dispatcherName || currentUser?.name || 'Диспетчер'}</div>
-          </div>
-
-          <!-- 5. Размеры каждого изделия и цены -->
-          <div>
-            <div class="bold">Изделия и услуги:</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Наименование / Замеры</th>
-                  <th style="text-align: right;">Сумма</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${formData.items.map(it => `
-                  <tr>
-                    <td>
-                      <div class="bold">${it.name}</div>
-                      ${it.width && it.length ? `
-                        <div style="font-size: 11px; color: #555;">${it.width}м x ${it.length}м = ${it.area} м² (${it.price?.toLocaleString()} сум/м²)</div>
-                      ` : `
-                        <div style="font-size: 11px; color: #555;">${it.qty || 1} ${it.unit || 'шт'} x ${it.price?.toLocaleString()} сум</div>
-                      `}
-                    </td>
-                    <td style="text-align: right; font-weight: 700; white-space: nowrap;">
-                      ${it.unit === 'м²' && (!it.area || it.area === 0) ? 'Замер в цеху' : ((it.total || 0).toLocaleString() + ' сум')}
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- 6. В самом низу: итоговая сумма, оплаченная сумма и способ оплаты -->
-          <div class="total-section">
-            <div class="row-flex" style="font-size: 14px;">
-              <span class="bold">Итоговая сумма:</span>
-              <span class="bold">${totalSum.toLocaleString()} сум</span>
-            </div>
-            <div class="row-flex">
-              <span>Оплаченная сумма:</span>
-              <span class="bold">${paidSum.toLocaleString()} сум</span>
-            </div>
-            <div class="row-flex">
-              <span>Способ оплаты:</span>
-              <span class="bold">${formData.paymentType || 'Наличные'}</span>
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    printOrderReceipt({
+      ...formData,
+      dispatcherName: formData.dispatcherName || currentUser?.name || 'Мадина'
+    });
   };
 
   const handleSendTelegram = async () => {
