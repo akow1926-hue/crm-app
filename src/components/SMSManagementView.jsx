@@ -43,16 +43,25 @@ export default function SMSManagementView() {
   const [testMessage, setTestMessage] = useState('Assalomu alaykum! Cosmo Cleaning test SMS xabari.');
   const [sendingTest, setSendingTest] = useState(false);
 
-  const handleRefreshBalance = async () => {
+  // Auto-fetch real live balance on mount
+  useEffect(() => {
+    fetchSMSBalance().then(updated => {
+      if (updated) setConfig(updated);
+    }).catch(() => {});
+  }, []);
+
+  const handleRefreshBalance = async (showAlert = true) => {
     setLoadingBalance(true);
     try {
       const updated = await fetchSMSBalance();
       if (updated) {
         setConfig(updated);
-        alert(`✅ Баланс успешно обновлен: ${(updated.balanceAmount || 0).toLocaleString()} сум (~${(updated.smsCountRemaining || 0).toLocaleString()} СМС)`);
+        if (showAlert) {
+          alert(`✅ Баланс успешно обновлен: ${(updated.balanceAmount || 0).toLocaleString()} сум (~${(updated.smsCountRemaining || 0).toLocaleString()} СМС)`);
+        }
       }
     } catch (e) {
-      alert('Ошибка при обновлении баланса.');
+      if (showAlert) alert('Ошибка при обновлении баланса.');
     } finally {
       setLoadingBalance(false);
     }
@@ -120,8 +129,8 @@ export default function SMSManagementView() {
   };
 
   // Safe fallback values
-  const balanceAmount = config?.balanceAmount ?? 185000;
-  const smsCountRemaining = config?.smsCountRemaining ?? 9250;
+  const balanceAmount = config?.balanceAmount ?? 303120;
+  const smsCountRemaining = config?.smsCountRemaining ?? 6062;
   const providerName = (config?.provider || 'eskiz').toUpperCase();
   const hasToken = Boolean(config?.token && config.token.trim().length > 10);
 

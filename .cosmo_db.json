@@ -639,10 +639,9 @@
   "smsConfig": {
     "provider": "eskiz",
     "email": "akow1926@gmail.com",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODkyNDM5NTgsImlhdCI6MTc4NjY1MTk1OCwicm9sZSI6InVzZXIiLCJzaWduIjoiZDNlNGY3YmY4ZDY0MGMwN2U4Yjk4ZTgzZGQ5OTJiNjdjYTdkMzY5ZWYyYzE1YThlMDM5ZDc3YmI0MTlmMzg4NiIsInN1YiI6IjE2ODE1In0.lxNmB9DIkYGUxl4Pg-ZtbiERJcpfUvLleeNk4f50AZI",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODkyNDUzMTcsImlhdCI6MTc4NjY1MzMxNywicm9sZSI6InVzZXIiLCJzaWduIjoiZDNlNGY3YmY4ZDY0MGMwN2U4Yjk4ZTgzZGQ5OTJiNjdjYTdkMzY5ZWYyYzE1YThlMDM5ZDc3YmI0MTlmMzg4NiIsInN1YiI6IjE2ODE1In0.aQ0fTYPDWhJkaMglHL6Mk9mwww83MGgicdxqu3mzTys",
     "fromName": "4546",
-    "accountName": "\"CLEANERS BIO SERVICE\" MCHJ",
-    "balanceAmount": 303120,
-    "smsCountRemaining": 6062
+    "balanceAmount": 303440,
+    "smsCountRemaining": 15172
   }
 }

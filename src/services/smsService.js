@@ -18,8 +18,8 @@ export const getSMSConfig = () => {
     email: 'akow1926@gmail.com',
     token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODkyNDM5NTgsImlhdCI6MTc4NjY1MTk1OCwicm9sZSI6InVzZXIiLCJzaWduIjoiZDNlNGY3YmY4ZDY0MGMwN2U4Yjk4ZTgzZGQ5OTJiNjdjYTdkMzY5ZWYyYzE1YThlMDM5ZDc3YmI0MTlmMzg4NiIsInN1YiI6IjE2ODE1In0.lxNmB9DIkYGUxl4Pg-ZtbiERJcpfUvLleeNk4f50AZI',
     fromName: '4546',
-    balanceAmount: 303440,
-    smsCountRemaining: 15172
+    balanceAmount: 303120,
+    smsCountRemaining: 6062
   };
 };
 
