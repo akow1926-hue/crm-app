@@ -291,26 +291,63 @@ export const submitEskizTemplate = async (templateText) => {
 
 // Auto-login to Eskiz.uz via email and password to fetch & save token
 export const loginEskiz = async ({ email, password }) => {
-  if (!email || !password) {
-    return { success: false, message: 'Введите Email и Пароль от Eskiz.uz' };
+  const cleanEmail = String(email || '').trim();
+  const cleanPassword = String(password || '').trim();
+
+  if (!cleanEmail || !cleanPassword) {
+    return { success: false, message: 'Введите Email и Пароль от личного кабинета Eskiz.uz' };
   }
+
+  if (!cleanEmail.includes('@')) {
+    return { success: false, message: 'В поле логина Eskiz.uz нужно указать ваш Email (например: info@domain.uz или yourname@gmail.com), а не номер телефона или имя пользователя.' };
+  }
+
+  // 1. Try /api/sms/login and /api/sms proxies
+  const endpoints = ['/api/sms/login', '/api/sms'];
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && (data?.data?.token || data?.token)) {
+        const newToken = data.data?.token || data.token;
+        const config = getSMSConfig();
+        const updated = { ...config, email: cleanEmail, token: newToken };
+        saveSMSConfig(updated);
+        return { success: true, token: newToken, message: '✅ Успешная авторизация в Eskiz.uz! Токен получен и сохранен.' };
+      }
+      if (data?.message && !data.message.includes('404')) {
+        return { success: false, message: `Ошибка Eskiz.uz: ${data.message}. Проверьте правильность Email и пароля на сайте eskiz.uz.` };
+      }
+    } catch (e) {
+      console.warn(`Auth attempt via ${endpoint} failed:`, e);
+    }
+  }
+
+  // 2. Direct fallback to Eskiz API (via FormData)
   try {
-    const res = await fetch('/api/sms/login', {
+    const formData = new FormData();
+    formData.append('email', cleanEmail);
+    formData.append('password', cleanPassword);
+
+    const directRes = await fetch('https://notify.eskiz.uz/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: formData
     });
-    const data = await res.json().catch(() => null);
-    if (res.ok && (data?.data?.token || data?.token)) {
-      const newToken = data.data?.token || data.token;
+    const directData = await directRes.json().catch(() => null);
+    if (directRes.ok && (directData?.data?.token || directData?.token)) {
+      const newToken = directData.data?.token || directData.token;
       const config = getSMSConfig();
-      const updated = { ...config, email, token: newToken };
+      const updated = { ...config, email: cleanEmail, token: newToken };
       saveSMSConfig(updated);
       return { success: true, token: newToken, message: '✅ Успешная авторизация в Eskiz.uz! Токен сохранен.' };
     }
-    return { success: false, message: data?.message || 'Ошибка авторизации Eskiz.uz. Проверьте Email и пароль.' };
+    return { success: false, message: directData?.message || 'Неверный логин (Email) или пароль в Eskiz.uz. Проверьте учетные данные на сайте eskiz.uz.' };
   } catch (err) {
-    return { success: false, message: `Ошибка сети при авторизации: ${err.message}` };
+    return { success: false, message: `Ошибка связи с Eskiz: ${err.message}. Вы можете вручную скопировать Bearer Token из кабинета eskiz.uz и вставить в поле токена.` };
   }
 };
 
