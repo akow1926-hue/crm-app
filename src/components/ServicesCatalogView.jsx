@@ -13,28 +13,67 @@ import {
   Tag 
 } from 'lucide-react';
 import { serviceCatalog as initialCatalog } from '../data/initialData';
+import { broadcastDataChange, subscribeToRealtimeSync } from '../services/syncEngine';
 
 export default function ServicesCatalogView() {
   const [catalog, setCatalog] = useState(() => {
     try {
       const saved = localStorage.getItem('cosmo_crm_service_catalog');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
     return initialCatalog;
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleUpdateItem = (id, field, value) => {
-    setCatalog(prev => prev.map(item => {
-      if (item.id === id) {
-        return { 
-          ...item, 
-          [field]: value 
-        };
+  // Helper to persist catalog to localStorage and broadcast across devices/tabs
+  const persistCatalog = (newCatalog) => {
+    try {
+      const formatted = newCatalog.map(s => ({
+        ...s,
+        price: parseFloat(s.price) || 0
+      }));
+      localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(formatted));
+      broadcastDataChange('service_catalog', formatted);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 2000);
+    } catch (e) {
+      console.error('Error saving catalog:', e);
+    }
+  };
+
+  // Subscribe to real-time changes from other tabs or devices
+  useEffect(() => {
+    const unsubscribe = subscribeToRealtimeSync((syncData) => {
+      if (syncData.type === 'service_catalog' && Array.isArray(syncData.payload)) {
+        setCatalog(syncData.payload);
+        try {
+          localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(syncData.payload));
+        } catch (e) {}
       }
-      return item;
-    }));
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleUpdateItem = (id, field, value) => {
+    setCatalog(prev => {
+      const updated = prev.map(item => {
+        if (item.id === id) {
+          return { 
+            ...item, 
+            [field]: value 
+          };
+        }
+        return item;
+      });
+      persistCatalog(updated);
+      return updated;
+    });
   };
 
   const handleAddNewService = () => {
@@ -47,24 +86,22 @@ export default function ServicesCatalogView() {
       price: 25000,
       icon: 'Sparkles'
     };
-    setCatalog([...catalog, newService]);
+    const updated = [...catalog, newService];
+    setCatalog(updated);
+    persistCatalog(updated);
   };
 
   const handleDeleteService = (id) => {
     if (window.confirm('Удалить эту услугу из прайс-листа?')) {
-      setCatalog(catalog.filter(s => s.id !== id));
+      const updated = catalog.filter(s => s.id !== id);
+      setCatalog(updated);
+      persistCatalog(updated);
     }
   };
 
   const handleSaveCatalog = () => {
-    const formattedCatalog = catalog.map(s => ({
-      ...s,
-      price: parseFloat(s.price) || 0
-    }));
-    localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(formattedCatalog));
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-    alert('✅ Прайс-лист и единица измерения для всех услуг сохранены! Курьер и цех теперь видят эти настройки.');
+    persistCatalog(catalog);
+    alert('✅ Прайс-лист и единица измерения сохранены для всей CRM!');
   };
 
   return (

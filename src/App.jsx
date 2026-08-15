@@ -151,8 +151,17 @@ export default function App() {
     return null;
   });
 
-  // Production State strictly driven by Supabase Postgres DB
-  const [orders, setOrdersState] = useState([]);
+  // Production State strictly driven by Supabase Postgres DB with LocalStorage Fallback Cache
+  const [orders, setOrdersState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_orders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [clients, setClientsState] = useState(initialClients || []);
   const [logs, setLogs] = useState(initialLogs || []);
   const [registeredUsers, setRegisteredUsersState] = useState(() => {
@@ -358,6 +367,11 @@ export default function App() {
         }
       });
 
+      // Save locally to prevent order loss
+      try {
+        localStorage.setItem('cosmo_crm_orders', JSON.stringify(nextOrders));
+      } catch (e) {}
+
       // Broadcast changes across gadgets
       broadcastDataChange('orders', nextOrders);
 
@@ -427,9 +441,26 @@ export default function App() {
 
       let hasSuccess = false;
 
-      if (Array.isArray(dbOrders)) {
+      if (Array.isArray(dbOrders) && dbOrders.length > 0) {
         setOrdersState(dbOrders);
+        try {
+          localStorage.setItem('cosmo_crm_orders', JSON.stringify(dbOrders));
+        } catch (e) {}
         checkOverdueOrders(dbOrders);
+        hasSuccess = true;
+      } else if (Array.isArray(dbOrders) && dbOrders.length === 0) {
+        // If Supabase returned 0 orders (e.g. fresh session or temporary fetch issue), check local cache before wiping!
+        const local = localStorage.getItem('cosmo_crm_orders');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setOrdersState(parsed);
+              // Push cached orders back to Supabase so nothing is lost!
+              parsed.forEach(o => saveSupabaseOrder(o));
+            }
+          } catch (err) {}
+        }
         hasSuccess = true;
       }
       if (Array.isArray(dbUsers) && dbUsers.length > 0) {
