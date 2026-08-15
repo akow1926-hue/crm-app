@@ -17,8 +17,8 @@ export const generateReceiptHtml = (order) => {
         <title>Чек-Накладная Заказа №${order.id || order.tempId || 'Б/Н'}</title>
         <style>
           @page {
-            size: A4 portrait;
-            margin: 12mm 15mm;
+            size: 80mm auto;
+            margin: 2mm 3mm;
           }
           * {
             box-sizing: border-box;
@@ -30,16 +30,20 @@ export const generateReceiptHtml = (order) => {
             padding: 0;
             margin: 0;
             width: 100%;
-            color: #0f172a !important;
-            line-height: 1.45;
+            max-width: 80mm;
+            color: #000000 !important;
+            line-height: 1.35;
             background: #ffffff !important;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            -webkit-font-smoothing: antialiased;
           }
 
           .receipt-container {
             width: 100%;
             max-width: 100%;
             margin: 0 auto;
+            padding: 4px 2px;
           }
 
           /* Header */
@@ -47,207 +51,238 @@ export const generateReceiptHtml = (order) => {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2.5px solid #0f172a;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
+            border-bottom: 2.5px solid #000000;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            gap: 8px;
           }
           .brand-title {
-            font-size: 26px;
+            font-size: 20px;
             font-weight: 900;
-            color: #0f172a;
-            letter-spacing: 0.5px;
+            color: #000000;
+            letter-spacing: 0.2px;
             text-transform: uppercase;
+            line-height: 1.1;
           }
           .brand-subtitle {
-            font-size: 13px;
-            color: #475569;
-            font-weight: 600;
-            margin-top: 2px;
+            font-size: 11px;
+            color: #000000;
+            font-weight: 800;
+            margin-top: 3px;
+            line-height: 1.2;
           }
           .brand-contacts {
-            font-size: 12.5px;
-            color: #334155;
+            font-size: 11px;
+            color: #000000;
             margin-top: 4px;
-            font-weight: 500;
+            font-weight: 800;
           }
 
           .order-badge-block {
             text-align: right;
+            flex-shrink: 0;
           }
           .order-badge {
             display: inline-block;
-            background: #0f172a;
+            background: #000000;
             color: #ffffff !important;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 18px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 15px;
             font-weight: 900;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
           }
           .order-dates {
-            font-size: 12.5px;
-            color: #334155;
-            margin-top: 6px;
-            font-weight: 600;
+            font-size: 10.5px;
+            color: #000000;
+            margin-top: 4px;
+            font-weight: 800;
+            line-height: 1.25;
           }
 
           /* 2 Column Info Cards */
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-bottom: 18px;
+            gap: 8px;
+            margin-bottom: 10px;
           }
           .info-card {
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 12px 14px;
-            background: #f8fafc !important;
+            border: 1.5px solid #000000;
+            border-radius: 6px;
+            padding: 8px;
+            background: #ffffff !important;
           }
           .card-title {
-            font-size: 12.5px;
+            font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #0f172a;
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+            color: #000000;
+            border-bottom: 1.5px solid #000000;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
           }
           .info-row {
             display: flex;
-            margin-bottom: 5px;
-            font-size: 13.5px;
+            flex-direction: column;
+            margin-bottom: 4px;
+            font-size: 11.5px;
+            line-height: 1.25;
           }
           .info-row:last-child {
             margin-bottom: 0;
           }
           .info-label {
-            width: 140px;
-            color: #64748b;
-            font-weight: 600;
-            flex-shrink: 0;
+            color: #000000;
+            font-weight: 800;
+            font-size: 10.5px;
+            text-transform: uppercase;
           }
           .info-val {
-            font-weight: 700;
-            color: #0f172a;
-            flex: 1;
+            font-weight: 900;
+            color: #000000;
+            word-break: break-word;
           }
 
           /* Table of Items */
           .table-title {
-            font-size: 15px;
+            font-size: 12px;
             font-weight: 900;
             text-transform: uppercase;
-            color: #0f172a;
-            margin-bottom: 8px;
+            color: #000000;
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
           }
           table.items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
           }
           table.items-table th {
-            background: #0f172a !important;
+            background: #000000 !important;
             color: #ffffff !important;
-            font-size: 13px;
-            font-weight: 800;
-            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 6px 4px;
             text-align: left;
-            border: 1px solid #0f172a;
+            border: 1px solid #000000;
           }
           table.items-table td {
-            padding: 8px 10px;
-            border: 1px solid #cbd5e1;
-            font-size: 13.5px;
+            padding: 6px 4px;
+            border: 1px solid #000000;
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #000000;
             vertical-align: middle;
           }
-          table.items-table tbody tr:nth-child(even) {
-            background: #f8fafc !important;
+          table.items-table tbody tr {
+            background: #ffffff !important;
           }
 
           /* Totals Section */
           .totals-wrapper {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
           }
           .totals-box {
-            width: 320px;
-            border: 1.5px solid #0f172a;
-            border-radius: 8px;
+            width: 100%;
+            border: 2px solid #000000;
+            border-radius: 6px;
             overflow: hidden;
+            background: #ffffff !important;
           }
           .total-line {
             display: flex;
             justify-content: space-between;
-            padding: 7px 12px;
-            font-size: 14px;
-            border-bottom: 1px dashed #cbd5e1;
+            padding: 5px 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #000000;
+            border-bottom: 1px solid #000000;
           }
           .total-line:last-child {
             border-bottom: none;
           }
           .total-line.grand-total {
-            background: #0f172a !important;
+            background: #000000 !important;
             color: #ffffff !important;
-            font-size: 17px;
+            font-size: 14px;
             font-weight: 900;
-            padding: 10px 12px;
+            padding: 8px;
           }
 
           /* Bottom Guarantee & Instagram Section */
           .footer-section {
-            border-top: 2px solid #0f172a;
-            padding-top: 14px;
+            border-top: 2px solid #000000;
+            padding-top: 10px;
             display: grid;
-            grid-template-columns: 1fr 180px;
-            gap: 16px;
+            grid-template-columns: 1fr 120px;
+            gap: 10px;
             align-items: center;
           }
           .guarantee-text {
-            font-size: 12.5px;
-            color: #475569;
-            line-height: 1.5;
+            font-size: 10.5px;
+            color: #000000;
+            font-weight: 800;
+            line-height: 1.3;
           }
           .signatures-row {
             display: flex;
-            gap: 40px;
-            margin-top: 24px;
-            font-size: 13px;
-            font-weight: 700;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+            font-size: 11px;
+            font-weight: 900;
+            color: #000000;
           }
           .sig-line {
-            border-bottom: 1px solid #000;
+            border-bottom: 1.5px solid #000000;
             display: inline-block;
-            width: 140px;
-            margin-left: 6px;
+            width: 120px;
+            margin-left: 4px;
           }
 
           .qr-box {
             text-align: center;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 8px;
-            background: #f8fafc !important;
+            border: 1.5px solid #000000;
+            border-radius: 6px;
+            padding: 6px;
+            background: #ffffff !important;
           }
           .qr-title {
-            font-size: 12px;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 4px;
+            font-size: 10px;
+            font-weight: 900;
+            color: #000000;
+            margin-bottom: 3px;
           }
           .qr-img {
-            width: 105px;
-            height: 105px;
+            width: 90px;
+            height: 90px;
             display: block;
             margin: 0 auto;
           }
           .qr-inst {
-            font-size: 12px;
+            font-size: 10.5px;
             font-weight: 900;
-            color: #e1306c;
-            margin-top: 4px;
+            color: #000000;
+            margin-top: 3px;
+          }
+
+          @media print {
+            * {
+              color: #000000 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .order-badge, table.items-table th, .total-line.grand-total {
+              background: #000000 !important;
+              color: #ffffff !important;
+            }
+            .order-badge *, table.items-table th *, .total-line.grand-total * {
+              color: #ffffff !important;
+            }
           }
         </style>
       </head>
@@ -309,31 +344,31 @@ export const generateReceiptHtml = (order) => {
           <table class="items-table">
             <thead>
               <tr>
-                <th style="width: 35px; text-align: center;">№</th>
+                <th style="width: 25px; text-align: center;">№</th>
                 <th>Наименование услуги / изделия</th>
-                <th style="width: 180px;">Размеры (Ш x Д)</th>
-                <th style="width: 140px; text-align: center;">Площадь / Кол-во</th>
-                <th style="width: 130px; text-align: right;">Тариф</th>
-                <th style="width: 140px; text-align: right;">Сумма</th>
+                <th style="width: 95px;">Размеры (Ш x Д)</th>
+                <th style="width: 75px; text-align: center;">Площадь</th>
+                <th style="width: 75px; text-align: right;">Тариф</th>
+                <th style="width: 80px; text-align: right;">Сумма</th>
               </tr>
             </thead>
             <tbody>
               ${items.map((it, idx) => `
                 <tr>
-                  <td style="text-align: center; font-weight: 700;">${idx + 1}</td>
+                  <td style="text-align: center; font-weight: 900;">${idx + 1}</td>
                   <td>
-                    <div style="font-weight: 800; color: #0f172a;">${it.name || it.serviceName || 'Ковры / Изделия'}</div>
+                    <div style="font-weight: 900; color: #000000;">${it.name || it.serviceName || 'Ковры / Изделия'}</div>
                   </td>
                   <td>
                     ${it.width && it.length ? `<strong>${it.width} м</strong> x <strong>${it.length} м</strong>` : '—'}
                   </td>
-                  <td style="text-align: center; font-weight: 700;">
+                  <td style="text-align: center; font-weight: 900;">
                     ${it.width && it.length ? `${it.area || (it.width * it.length)} м²` : `${it.qty || 1} ${it.unit || 'шт'}`}
                   </td>
-                  <td style="text-align: right; color: #475569; font-weight: 600;">
-                    ${(it.price || 0).toLocaleString()} сум${it.unit === 'м²' ? '/м²' : ''}
+                  <td style="text-align: right; color: #000000; font-weight: 800; white-space: nowrap;">
+                    ${(it.price || 0).toLocaleString()} сум
                   </td>
-                  <td style="text-align: right; font-weight: 800; color: #0f172a; white-space: nowrap;">
+                  <td style="text-align: right; font-weight: 900; color: #000000; white-space: nowrap;">
                     ${it.unit === 'м²' && (!it.area || it.area === 0) ? 'Замер в цеху' : (((it.total !== undefined ? it.total : it.price) || 0).toLocaleString() + ' сум')}
                   </td>
                 </tr>
@@ -345,17 +380,17 @@ export const generateReceiptHtml = (order) => {
           <div class="totals-wrapper">
             <div class="totals-box">
               <div class="total-line">
-                <span style="color: #64748b; font-weight: 600;">Сумма по тарифу:</span>
-                <span style="font-weight: 700;">${totalSum.toLocaleString()} сум</span>
+                <span style="color: #000000; font-weight: 800;">Сумма по тарифу:</span>
+                <span style="font-weight: 900; color: #000000;">${totalSum.toLocaleString()} сум</span>
               </div>
               <div class="total-line">
-                <span style="color: #64748b; font-weight: 600;">Оплаченная сумма:</span>
-                <span style="font-weight: 800; color: #10b981;">${paidSum.toLocaleString()} сум</span>
+                <span style="color: #000000; font-weight: 800;">Оплаченная сумма:</span>
+                <span style="font-weight: 900; color: #000000;">${paidSum.toLocaleString()} сум</span>
               </div>
               ${remainingSum > 0 ? `
                 <div class="total-line">
-                  <span style="color: #ef4444; font-weight: 700;">Остаток к оплате:</span>
-                  <span style="font-weight: 900; color: #ef4444;">${remainingSum.toLocaleString()} сум</span>
+                  <span style="color: #000000; font-weight: 900;">Остаток к оплате:</span>
+                  <span style="font-weight: 900; color: #000000;">${remainingSum.toLocaleString()} сум</span>
                 </div>
               ` : ''}
               <div class="total-line grand-total">
@@ -369,8 +404,8 @@ export const generateReceiptHtml = (order) => {
           <div class="footer-section">
             <div>
               <div class="guarantee-text">
-                Благодарим за выбор <strong>Cosmo Cleaning Service</strong>! Мы гарантируем чистоту, дезинфекцию и бережный уход за каждым изделием.
-                Претензии по качеству принимаются в течение 24 часов с момента получения.
+                Благодарим за выбор <strong>Cosmo Cleaning Service</strong>! Мы гарантируем чистоту, дезинфекцию и бережный уход.
+                Претензии принимаются в течение 24 часов.
               </div>
 
               <div class="signatures-row">
@@ -380,7 +415,7 @@ export const generateReceiptHtml = (order) => {
             </div>
 
             <div class="qr-box">
-              <div class="qr-title">Instagram страница:</div>
+              <div class="qr-title">Instagram:</div>
               <img src="${INSTAGRAM_QR_BASE64}" alt="Instagram QR Code" class="qr-img" />
               <div class="qr-inst">@cosmocleaning.uz</div>
             </div>

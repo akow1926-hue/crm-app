@@ -20,6 +20,7 @@ import {
   Package
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { printOrderReceipt } from '../utils/printReceipt';
 
 export default function ClientTrackingPortal({ orderId, orders = [], onBackToCRM }) {
   const [order, setOrder] = useState(null);
@@ -253,7 +254,7 @@ export default function ClientTrackingPortal({ orderId, orders = [], onBackToCRM
               <Share2 size={18} color="#38bdf8" />
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => printOrderReceipt(order)}
               className="btn-icon"
               style={{ background: 'rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '10px' }}
               title="Распечатать чек"
