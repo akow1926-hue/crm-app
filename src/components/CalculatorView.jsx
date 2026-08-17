@@ -1,18 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, Sparkles, Layers, Sofa, Bed, Feather, Sun, Plus, ArrowRight, Check } from 'lucide-react';
-import { serviceCatalog } from '../data/initialData';
+import { serviceCatalog as initialCatalog } from '../data/initialData';
+import { subscribeToRealtimeSync } from '../services/syncEngine';
 
 export default function CalculatorView({ onOpenNewOrderWithPreset }) {
+  const [catalog, setCatalog] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_service_catalog');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return initialCatalog;
+  });
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRealtimeSync((syncData) => {
+      if ((syncData.type === 'service_catalog' || syncData.type === 'serviceCatalog') && Array.isArray(syncData.payload)) {
+        setCatalog(syncData.payload);
+      }
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   const [selectedServices, setSelectedServices] = useState([
-    { serviceId: 'S-1', qty: 12 }, // 12 m² synthetic carpet
-    { serviceId: 'S-4', qty: 1 }   // 1 sofa
+    { serviceId: 'S-1', qty: 12 }, // 12 m² Gilam Standart
+    { serviceId: 'S-4', qty: 4 }   // 4 m Kurpacha
   ]);
   const [isExpress, setIsExpress] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(0);
 
   const addServiceRow = () => {
-    setSelectedServices([...selectedServices, { serviceId: serviceCatalog[0].id, qty: 1 }]);
+    const firstSvc = catalog[0] || initialCatalog[0];
+    setSelectedServices([...selectedServices, { serviceId: firstSvc.id, qty: 1 }]);
   };
 
   const updateRow = (index, field, value) => {
@@ -27,13 +51,13 @@ export default function CalculatorView({ onOpenNewOrderWithPreset }) {
 
   // Calculations
   const calculatedItems = selectedServices.map(row => {
-    const service = serviceCatalog.find(s => s.id === row.serviceId) || serviceCatalog[0];
-    const itemTotal = service.price * (parseFloat(row.qty) || 0);
+    const service = catalog.find(s => s.id === row.serviceId) || catalog[0] || initialCatalog[0];
+    const itemTotal = (service?.price || 0) * (parseFloat(row.qty) || 0);
     return {
-      name: service.name,
+      name: service?.name || 'Услуга',
       qty: parseFloat(row.qty) || 0,
-      unit: service.unit,
-      price: service.price,
+      unit: service?.unit || 'шт',
+      price: service?.price || 0,
       total: itemTotal
     };
   });
@@ -72,7 +96,7 @@ export default function CalculatorView({ onOpenNewOrderWithPreset }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowX: 'auto' }}>
             {selectedServices.map((row, index) => {
-              const currentService = serviceCatalog.find(s => s.id === row.serviceId);
+              const currentService = catalog.find(s => s.id === row.serviceId) || catalog[0] || initialCatalog[0];
               return (
                 <div 
                   key={index}
@@ -93,9 +117,9 @@ export default function CalculatorView({ onOpenNewOrderWithPreset }) {
                     className="select-field"
                     style={{ flex: 2 }}
                   >
-                    {serviceCatalog.map(s => (
+                    {catalog.map(s => (
                       <option key={s.id} value={s.id}>
-                        {s.name} ({s.price.toLocaleString()} сум / {s.unit})
+                        {s.name} ({(s.price || 0).toLocaleString()} сум / {s.unit})
                       </option>
                     ))}
                   </select>

@@ -23,6 +23,19 @@ function loadDb() {
       enabledEvents: { created: true, pickup: true, ready: true, done: true },
       status: process.env.TELEGRAM_BOT_TOKEN ? 'online' : 'offline'
     },
+    serviceCatalog: [
+      { id: "S-1", name: "Gilam Standart", category: "Ковры", unit: "м²", price: 14000, icon: "Layers" },
+      { id: "S-2", name: "Gilam Srochna", category: "Ковры", unit: "м²", price: 20000, icon: "Sparkles" },
+      { id: "S-3", name: "Gilam No standart", category: "Ковры", unit: "м²", price: 18000, icon: "Layers" },
+      { id: "S-4", name: "Kurpacha", category: "Текстиль", unit: "метр", price: 15000, icon: "Bed" },
+      { id: "S-5", name: "Kurpa", category: "Текстиль", unit: "шт", price: 70000, icon: "Bed" },
+      { id: "S-6", name: "Adyol(1)", category: "Текстиль", unit: "шт", price: 50000, icon: "Bed" },
+      { id: "S-7", name: "Adyol(2)", category: "Текстиль", unit: "шт", price: 70000, icon: "Bed" },
+      { id: "S-8", name: "Yostiq", category: "Текстиль", unit: "шт", price: 15000, icon: "Feather" },
+      { id: "S-9", name: "Parda Vilur", category: "Шторы", unit: "метр", price: 18000, icon: "Sun" },
+      { id: "S-10", name: "Parda Tur", category: "Шторы", unit: "метр", price: 15000, icon: "Sun" },
+      { id: "S-11", name: "Overlok", category: "Доп. услуги", unit: "метр", price: 20000, icon: "Tag" }
+    ],
     smsConfig: {
       provider: 'eskiz',
       email: 'info@cosmocleaning.uz',
@@ -137,6 +150,8 @@ function crmRealtimeSyncPlugin() {
               db.courierLocations = payload;
             } else if (type === 'tg_bot_config' || type === 'tgBotConfig') {
               db.tgBotConfig = payload;
+            } else if ((type === 'service_catalog' || type === 'serviceCatalog') && Array.isArray(payload)) {
+              db.serviceCatalog = payload;
             } else if (type === 'courier_location_updated') {
               if (payload?.courierName && payload?.location) {
                 db.courierLocations[payload.courierName] = payload.location;

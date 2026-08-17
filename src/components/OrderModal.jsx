@@ -36,15 +36,15 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
   })();
 
   const buildInitialFormData = (targetOrder) => {
-    const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+    const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
     const initialItems = targetOrder?.items && targetOrder.items.length > 0 
       ? targetOrder.items.map(it => ({
-          serviceId: it.serviceId || 'S-1',
-          name: it.serviceName || it.name?.split(' (')[0] || 'Мойка ковров',
-          unit: it.unit || 'м²',
+          serviceId: it.serviceId || defaultSvc.id,
+          name: it.serviceName || it.name?.split(' (')[0] || defaultSvc.name,
+          unit: it.unit || defaultSvc.unit,
           qty: it.qty || 1,
-          price: it.price || 15000,
-          total: it.total || (it.unit === 'шт' ? (it.qty || 1) * (it.price || 15000) : 0)
+          price: it.price || defaultSvc.price,
+          total: it.total || (it.unit === 'шт' ? (it.qty || 1) * (it.price || defaultSvc.price) : 0)
         }))
       : [
           {
@@ -105,7 +105,7 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
 
   // Add Item to Order
   const addItemRow = () => {
-    const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+    const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
     setFormData({
       ...formData,
       items: [

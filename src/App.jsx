@@ -488,6 +488,11 @@ export default function App() {
       if (db && db.tgBotConfig && db.tgBotConfig.botToken) {
         saveTelegramBotConfig(db.tgBotConfig, true);
       }
+      if (db && db.serviceCatalog && Array.isArray(db.serviceCatalog)) {
+        try {
+          localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(db.serviceCatalog));
+        } catch (e) {}
+      }
     }).catch(() => {});
 
     // 3. Subscribe to Supabase Realtime Postgres Changes for instant multi-device updates
@@ -495,12 +500,17 @@ export default function App() {
       loadSupabaseData();
     });
 
-    // 4. Subscribe to Realtime Cross-Device Events for Telegram Bot config sync
+    // 4. Subscribe to Realtime Cross-Device Events for Telegram Bot config & Service Catalog sync
     const unsubscribeRealtime = subscribeToRealtimeSync((syncData) => {
       if (syncData.type === 'tg_bot_config' || syncData.type === 'tgBotConfig') {
         if (syncData.payload && syncData.payload.botToken) {
           saveTelegramBotConfig(syncData.payload, true);
         }
+      }
+      if ((syncData.type === 'service_catalog' || syncData.type === 'serviceCatalog') && Array.isArray(syncData.payload)) {
+        try {
+          localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(syncData.payload));
+        } catch (e) {}
       }
     });
 

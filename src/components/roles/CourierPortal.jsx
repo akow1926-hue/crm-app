@@ -132,14 +132,16 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     return serviceCatalog;
   })();
 
+  const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
+
   // Pickup Form state & dynamic items list
   const [pickupItemsCount, setPickupItemsCount] = useState(1);
   const [pickupItemsList, setPickupItemsList] = useState([
-    { serviceId: 'S-1', name: 'Мойка ковров', unit: 'м²', qty: 1, price: 15000 }
+    { serviceId: defaultSvc.id, name: defaultSvc.name, unit: defaultSvc.unit, qty: 1, price: defaultSvc.price }
   ]);
   const [pickupConditionNotes, setPickupConditionNotes] = useState('');
   const [gpsLocation, setGpsLocation] = useState('');
-  const [standardPricePerM2, setStandardPricePerM2] = useState(14000);
+  const [standardPricePerM2, setStandardPricePerM2] = useState(defaultSvc.price || 14000);
   const [agreedPricePerM2, setAgreedPricePerM2] = useState(12000);
   const [negotiatedNotes, setNegotiatedNotes] = useState('');
 
@@ -365,7 +367,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         price: it.price || 15000
       })));
     } else {
-      const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+      const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
       setPickupItemsList([
         { serviceId: defaultSvc.id, name: defaultSvc.name, unit: defaultSvc.unit, qty: 1, price: defaultSvc.price }
       ]);
@@ -1093,7 +1095,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               <button
                 type="button"
                 onClick={() => {
-                  const defaultSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+                  const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
                   setStreetOrder({
                     ...streetOrder,
                     items: [
@@ -1577,7 +1579,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 <button
                   type="button"
                   onClick={() => {
-                    const firstSvc = availableServices[0] || { name: 'Мойка ковров', unit: 'м²', price: 15000 };
+                    const firstSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
                     setPickupItemsList([
                       ...pickupItemsList,
                       { serviceId: firstSvc.id, name: firstSvc.name, unit: firstSvc.unit, qty: 1, price: firstSvc.price }

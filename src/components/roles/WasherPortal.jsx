@@ -136,8 +136,9 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
       });
       setMeasuredItems(expanded);
     } else {
+      const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
       setMeasuredItems([
-        { id: '1', name: 'Мойка ковров #1', unit: 'м²', width: 2.5, length: 3.5, price: 15000, qty: 1 }
+        { id: '1', name: `${defaultSvc.name} #1`, unit: defaultSvc.unit || 'м²', width: 2.5, length: 3.5, price: defaultSvc.price || 14000, qty: 1 }
       ]);
     }
   };
@@ -799,10 +800,11 @@ export default function WasherPortal({ orders, setOrders, currentUser, onLogout,
               <button
                 type="button"
                 onClick={() => {
+                  const defaultSvc = availableServices[0] || { id: 'S-1', name: 'Gilam Standart', unit: 'м²', price: 14000 };
                   const nextNum = measuredItems.length + 1;
                   setMeasuredItems([
                     ...measuredItems,
-                    { id: `${Date.now()}`, name: `Мойка ковров #${nextNum}`, unit: 'м²', width: 2.5, length: 3.5, price: 15000, qty: 1 }
+                    { id: `${Date.now()}`, name: `${defaultSvc.name} #${nextNum}`, unit: defaultSvc.unit || 'м²', width: 2.5, length: 3.5, price: defaultSvc.price || 14000, qty: 1 }
                   ]);
                 }}
                 className="btn btn-secondary"

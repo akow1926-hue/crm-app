@@ -123,7 +123,16 @@ export default function AdminCardView({ orders, clients, currentUser, registered
   };
 
   // Pricing State
-  const [pricingList, setPricingList] = useState(serviceCatalog);
+  const [pricingList, setPricingList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_service_catalog');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return serviceCatalog;
+  });
 
   // Active Sessions
   const [sessions, setSessions] = useState([
@@ -869,6 +878,7 @@ export default function AdminCardView({ orders, clients, currentUser, registered
                   price: parseFloat(p.price) || 0
                 }));
                 localStorage.setItem('cosmo_crm_service_catalog', JSON.stringify(formattedPricing));
+                broadcastDataChange('service_catalog', formattedPricing);
                 alert('✅ Прайс-лист и структура услуг сохранены! Доступны курьеру и цеху.');
               }}
               className="btn btn-primary"
