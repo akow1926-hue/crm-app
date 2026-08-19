@@ -14,13 +14,15 @@ import {
   Languages,
   Clock,
   Sparkles,
-  QrCode
+  QrCode,
+  MapPin
 } from 'lucide-react';
 import { serviceCatalog } from '../data/initialData';
 import { getActiveCouriers, getActiveWashers } from '../services/staffHelper';
 import { smsTemplates, sendSMSNotification, INSTAGRAM_QR_BASE64 } from '../services/smsService';
 import { sendTelegramOrderCard, getTelegramBotConfig } from '../services/telegramBotService';
 import { printOrderReceipt } from '../utils/printReceipt';
+import LocationPickerModal from './LocationPickerModal';
 
 export default function OrderModal({ order, onClose, onSave, registeredUsers, allOrders = [], onOpenQRReceipt }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -80,12 +82,14 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
       assignedCourier: targetOrder?.assignedCourier || (activeCouriers[0]?.name || activeCouriers[0]?.username || 'Не назначен'),
       assignedWasher: targetOrder?.assignedWasher || (activeWashers[0]?.name || activeWashers[0]?.username || 'Не назначен'),
       dispatcherName: targetOrder?.dispatcherName || targetOrder?.createdBy || 'Мадина (Диспетчер)',
+      gpsLocation: targetOrder?.gpsLocation || '',
       createdDate: targetOrder?.createdDate || new Date().toLocaleString('ru-RU'),
       notes: targetOrder?.notes || targetOrder?.comment || ''
     };
   };
 
   const [formData, setFormData] = useState(() => buildInitialFormData(order));
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
   useEffect(() => {
     setFormData(buildInitialFormData(order));
@@ -321,7 +325,29 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
 
           {/* Address */}
           <div className="input-group" style={{ margin: 0 }}>
-            <label className="input-label" style={{ fontSize: '11px' }}>Адрес забора / доставки *</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="input-label" style={{ fontSize: '11px', margin: 0 }}>Адрес забора / доставки *</label>
+              <button
+                type="button"
+                onClick={() => setIsLocationPickerOpen(true)}
+                style={{
+                  background: 'rgba(6, 182, 212, 0.15)',
+                  border: '1px solid rgba(6, 182, 212, 0.4)',
+                  color: '#38bdf8',
+                  borderRadius: '6px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  fontWeight: '700',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Выбрать точную точку на карте Самарканда"
+              >
+                <MapPin size={12} /> {formData.gpsLocation ? '📍 Точка на карте' : '🗺️ Выбрать на карте'}
+              </button>
+            </div>
             <input 
               type="text" 
               required
@@ -663,6 +689,29 @@ export default function OrderModal({ order, onClose, onSave, registeredUsers, al
             </form>
           </div>
         </div>
+      )}
+
+      {/* Location Picker Modal */}
+      {isLocationPickerOpen && (
+        <LocationPickerModal
+          isOpen={isLocationPickerOpen}
+          onClose={() => setIsLocationPickerOpen(false)}
+          initialGps={formData.gpsLocation}
+          initialAddress={formData.address}
+          initialDistrict={formData.district}
+          initialLandmark={formData.landmark}
+          orderInfo={formData}
+          onSaveLocation={(saved) => {
+            setFormData(prev => ({
+              ...prev,
+              gpsLocation: saved.gpsLocation,
+              address: saved.address || prev.address,
+              district: saved.district || prev.district,
+              landmark: saved.landmark || prev.landmark
+            }));
+            setIsLocationPickerOpen(false);
+          }}
+        />
       )}
     </div>
   );

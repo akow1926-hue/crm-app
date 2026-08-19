@@ -34,6 +34,7 @@ import { deleteSupabaseOrder } from '../../services/supabaseService';
 import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 import { printOrderReceipt } from '../../utils/printReceipt';
 import RouteOptimizerModal from '../RouteOptimizerModal';
+import LocationPickerModal from '../LocationPickerModal';
 
 export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers, onOpenQRReceipt }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
@@ -110,6 +111,15 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
   const [receiptModalOrder, setReceiptModalOrder] = useState(null);
   const [editModalOrder, setEditModalOrder] = useState(null);
   const [isRouteOptimizerOpen, setIsRouteOptimizerOpen] = useState(false);
+  const [locationPickerState, setLocationPickerState] = useState({
+    isOpen: false,
+    target: null, // 'pickup' | 'edit' | 'street' | 'direct_card'
+    order: null,
+    initialGps: '',
+    initialAddress: '',
+    initialDistrict: 'Сиёб',
+    initialLandmark: ''
+  });
   const [editFormData, setEditFormData] = useState({
     id: '',
     clientName: '',
@@ -282,19 +292,79 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
     setTimeout(() => setCopiedOrderId(null), 2500);
   };
 
-  // Capture GPS coordinates
-  const handleCaptureGPS = () => {
+  // Capture GPS coordinates for phone
+  const handleCaptureGPS = (target = 'pickup') => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition((pos) => {
         const coords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
-        setGpsLocation(coords);
+        if (target === 'pickup' || target === 'street') {
+          setGpsLocation(coords);
+        }
+        if (target === 'edit') {
+          setEditFormData(prev => ({ ...prev, gpsLocation: coords }));
+        }
         alert(`GPS локация успешно захвачена: ${coords}`);
       }, (err) => {
         alert('Не удалось получить GPS: ' + err.message);
-      });
+      }, { enableHighAccuracy: true, timeout: 10000 });
     } else {
       alert('Геолокация не поддерживается вашим браузером');
     }
+  };
+
+  // Open Location Picker for Pickup Modal
+  const openPickupLocationPicker = () => {
+    if (!pickupModalOrder) return;
+    setLocationPickerState({
+      isOpen: true,
+      target: 'pickup',
+      order: pickupModalOrder,
+      initialGps: gpsLocation || pickupModalOrder.gpsLocation || '',
+      initialAddress: pickupModalOrder.address || '',
+      initialDistrict: pickupModalOrder.district || 'Сиёб',
+      initialLandmark: pickupModalOrder.landmark || ''
+    });
+  };
+
+  // Open Location Picker for Edit Modal
+  const openEditLocationPicker = () => {
+    if (!editModalOrder) return;
+    setLocationPickerState({
+      isOpen: true,
+      target: 'edit',
+      order: editModalOrder,
+      initialGps: editFormData.gpsLocation || '',
+      initialAddress: editFormData.address || '',
+      initialDistrict: editFormData.district || 'Сиёб',
+      initialLandmark: editFormData.landmark || ''
+    });
+  };
+
+  // Open Location Picker for Street Order
+  const openStreetLocationPicker = () => {
+    setLocationPickerState({
+      isOpen: true,
+      target: 'street',
+      order: null,
+      initialGps: gpsLocation || '',
+      initialAddress: streetOrder.address || '',
+      initialDistrict: streetOrder.district || 'Сиёб',
+      initialLandmark: streetOrder.landmark || ''
+    });
+  };
+
+  // Open Location Picker directly from Order Card
+  const openDirectCardLocationPicker = (order) => {
+    if (!order) return;
+    setLocationPickerState({
+      isOpen: true,
+      target: 'direct_card',
+      order: order,
+      initialGps: order.gpsLocation || '',
+      initialAddress: order.address || '',
+      initialDistrict: order.district || 'Сиёб',
+      initialLandmark: order.landmark || ''
+    });
   };
 
   // Open Edit Modal
@@ -422,6 +492,9 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           items: itemsFormatted,
           totalAmount: fixedTotalAmount > 0 ? fixedTotalAmount : (o.totalAmount || 0),
           gpsLocation: gpsLocation || o.gpsLocation || '',
+          address: pickupModalOrder.address || o.address,
+          district: pickupModalOrder.district || o.district,
+          landmark: pickupModalOrder.landmark || o.landmark,
           notes: (o.notes ? o.notes + ' | ' : '') + customNote
         };
         updatedTargetOrder = updated;
@@ -1123,9 +1196,44 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               />
             </div>
 
-            <button type="button" onClick={handleCaptureGPS} className="btn btn-secondary" style={{ padding: '8px', fontSize: '12px' }}>
-              <Compass size={14} /> {gpsLocation ? `📍 GPS: ${gpsLocation}` : '📍 Захватить координаты'}
-            </button>
+            {/* GPS & Map location picker in Street Order */}
+            <div style={{
+              background: 'rgba(6, 182, 212, 0.08)',
+              border: '1.5px solid rgba(6, 182, 212, 0.35)',
+              borderRadius: '12px',
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={13} /> Локация заказа:
+                </span>
+                <span style={{ fontSize: '11px', color: gpsLocation ? '#34d399' : '#94a3b8', fontFamily: 'monospace' }}>
+                  {gpsLocation || 'Координаты не указаны'}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => handleCaptureGPS('street')} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '8px', fontSize: '12px', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)', justifyContent: 'center' }}
+                >
+                  <Compass size={14} /> 🎯 GPS Телефона
+                </button>
+                <button 
+                  type="button" 
+                  onClick={openStreetLocationPicker} 
+                  className="btn btn-primary" 
+                  style={{ padding: '8px', fontSize: '12px', background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)', fontWeight: '800', justifyContent: 'center' }}
+                >
+                  <MapPin size={14} /> 🗺️ Точка на карте
+                </button>
+              </div>
+            </div>
 
             <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)', padding: '12px', fontSize: '14px', fontWeight: '800' }}>
               <CheckCircle2 size={16} /> Принять заказ & Отправить в цех
@@ -1248,27 +1356,51 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                       </button>
                     </div>
 
-                    <a 
-                      href={order.gpsLocation ? `https://yandex.ru/maps/?text=${encodeURIComponent(order.gpsLocation)}` : `https://yandex.ru/maps/?text=${encodeURIComponent((order.district ? order.district + ', ' : '') + order.address + ' Самарканд')}`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                        color: '#f87171',
-                        borderRadius: '6px',
-                        padding: '3px 7px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        textDecoration: 'none'
-                      }}
-                      title="Открыть на карте (Яндекс Навигатор)"
-                    >
-                      <MapPin size={13} color="#f87171" />
-                    </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <button 
+                        type="button"
+                        onClick={() => openDirectCardLocationPicker(order)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: order.gpsLocation ? 'rgba(16, 185, 129, 0.18)' : 'rgba(56, 189, 248, 0.18)',
+                          border: order.gpsLocation ? '1px solid #10b981' : '1px solid #38bdf8',
+                          color: order.gpsLocation ? '#34d399' : '#38bdf8',
+                          borderRadius: '6px',
+                          padding: '3px 6px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: '700'
+                        }}
+                        title="Указать / изменить точную точку на карте для этого заказа"
+                      >
+                        <MapPin size={12} />
+                        <span>{order.gpsLocation ? 'Точка' : 'Карта'}</span>
+                      </button>
+
+                      <a 
+                        href={order.gpsLocation ? `https://yandex.ru/maps/?text=${encodeURIComponent(order.gpsLocation)}` : `https://yandex.ru/maps/?text=${encodeURIComponent((order.district ? order.district + ', ' : '') + order.address + ' Самарканд')}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          color: '#f87171',
+                          borderRadius: '6px',
+                          padding: '3px 6px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          textDecoration: 'none'
+                        }}
+                        title="Открыть в Яндекс Навигаторе"
+                      >
+                        <Navigation size={12} color="#f87171" />
+                      </a>
+                    </div>
                   </div>
 
                   {/* Row 5: Address */}
@@ -1622,25 +1754,71 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                 />
               </div>
 
-              {/* GPS Capture Button */}
-              <button 
-                type="button" 
-                onClick={handleCaptureGPS} 
-                className="btn" 
-                style={{ 
-                  background: gpsLocation ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)', 
-                  border: gpsLocation ? '1px solid #10b981' : '1px solid #38bdf8',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '10px'
-                }}
-              >
-                <Compass size={16} /> 
-                {gpsLocation ? `📍 GPS Захвачен (${gpsLocation})` : '📍 Захватить GPS забора'}
-              </button>
+              {/* GPS & Map Location Selection Section */}
+              <div style={{
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1.5px solid rgba(6, 182, 212, 0.35)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={15} />
+                    <span>📍 ЛОКАЦИЯ КЛИЕНТА (GPS & КАРТА):</span>
+                  </span>
+                  {gpsLocation ? (
+                    <span className="badge badge-done" style={{ fontSize: '10px' }}>
+                      🟢 Точка зафиксирована
+                    </span>
+                  ) : (
+                    <span className="badge badge-pickup" style={{ fontSize: '10px' }}>
+                      🟡 Не зафиксировано
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                  <div>🏠 <strong>Адрес:</strong> {pickupModalOrder.address || 'Адрес не указан'} {pickupModalOrder.landmark ? `(${pickupModalOrder.landmark})` : ''}</div>
+                  <div style={{ marginTop: '2px', color: gpsLocation ? '#34d399' : '#94a3b8', fontFamily: 'monospace', fontSize: '11.5px' }}>
+                    Координаты: <strong>{gpsLocation || 'Не определены'}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleCaptureGPS('pickup')}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '8px',
+                      fontSize: '12px',
+                      color: '#34d399',
+                      borderColor: 'rgba(16, 185, 129, 0.4)',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Compass size={14} /> 🎯 GPS Телефона
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openPickupLocationPicker}
+                    className="btn btn-primary"
+                    style={{
+                      padding: '8px',
+                      fontSize: '12px',
+                      background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+                      fontWeight: '800',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <MapPin size={14} /> 🗺️ Выбрать на карте
+                  </button>
+                </div>
+              </div>
 
               <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #facc15 0%, #eab308 100%)', color: '#070d1e', fontWeight: '900', padding: '12px', fontSize: '14px' }}>
                 ✓ Забрал в цех (Присвоить номер заказа)
@@ -2092,8 +2270,26 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
               </div>
 
               {/* GPS Capture / Point on Map */}
-              <div className="input-group" style={{ margin: 0 }}>
-                <label className="input-label" style={{ fontSize: '11.5px' }}>Точка на карте / GPS координаты</label>
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1.5px solid rgba(245, 158, 11, 0.35)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="input-label" style={{ fontSize: '11.5px', color: '#facc15', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={14} /> Точка на карте / GPS координаты клиента
+                  </label>
+                  {editFormData.gpsLocation && (
+                    <span className="badge badge-done" style={{ fontSize: '10px' }}>
+                      🟢 Точка установлена
+                    </span>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
                     type="text" 
@@ -2101,23 +2297,31 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
                     onChange={(e) => setEditFormData({ ...editFormData, gpsLocation: e.target.value })} 
                     className="input-field" 
                     placeholder="39.6547, 66.9758"
-                    style={{ fontSize: '13px', padding: '8px 10px', flex: 1 }}
+                    style={{ fontSize: '13px', padding: '8px 10px', flex: 1, fontFamily: 'monospace' }}
                   />
                   <button 
                     type="button" 
-                    onClick={() => {
-                      if ('geolocation' in navigator) {
-                        navigator.geolocation.getCurrentPosition((pos) => {
-                          const coords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
-                          setEditFormData({ ...editFormData, gpsLocation: coords });
-                          alert(`GPS точка поставлена: ${coords}`);
-                        });
-                      }
-                    }}
+                    onClick={() => handleCaptureGPS('edit')}
                     className="btn btn-secondary"
-                    style={{ fontSize: '11px', padding: '8px 12px', flexShrink: 0 }}
+                    style={{ fontSize: '11px', padding: '8px 10px', flexShrink: 0, color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+                    title="Захватить текущие GPS координаты телефона"
                   >
-                    <Compass size={14} /> Захватить GPS
+                    <Compass size={14} /> 🎯 GPS
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={openEditLocationPicker}
+                    className="btn btn-primary"
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: '800',
+                      padding: '8px 12px',
+                      flexShrink: 0,
+                      background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)'
+                    }}
+                    title="Открыть интерактивную карту для выбора точки"
+                  >
+                    <MapPin size={14} /> 🗺️ На карте
                   </button>
                 </div>
               </div>
@@ -2169,6 +2373,66 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           onClose={() => setIsRouteOptimizerOpen(false)}
           courierName={courierName}
           courierGps={liveGpsData}
+        />
+      )}
+
+      {/* MODAL 8: Interactive Map Location Picker */}
+      {locationPickerState.isOpen && (
+        <LocationPickerModal
+          isOpen={locationPickerState.isOpen}
+          onClose={() => setLocationPickerState(prev => ({ ...prev, isOpen: false }))}
+          initialGps={locationPickerState.initialGps}
+          initialAddress={locationPickerState.initialAddress}
+          initialDistrict={locationPickerState.initialDistrict}
+          initialLandmark={locationPickerState.initialLandmark}
+          orderInfo={locationPickerState.order}
+          onSaveLocation={(saved) => {
+            if (locationPickerState.target === 'pickup') {
+              setGpsLocation(saved.gpsLocation);
+              setPickupModalOrder(prev => prev ? {
+                ...prev,
+                address: saved.address || prev.address,
+                district: saved.district || prev.district,
+                landmark: saved.landmark || prev.landmark,
+                gpsLocation: saved.gpsLocation
+              } : prev);
+            } else if (locationPickerState.target === 'edit') {
+              setEditFormData(prev => ({
+                ...prev,
+                gpsLocation: saved.gpsLocation,
+                address: saved.address || prev.address,
+                district: saved.district || prev.district,
+                landmark: saved.landmark || prev.landmark
+              }));
+            } else if (locationPickerState.target === 'street') {
+              setGpsLocation(saved.gpsLocation);
+              setStreetOrder(prev => ({
+                ...prev,
+                address: saved.address || prev.address,
+                district: saved.district || prev.district,
+                landmark: saved.landmark || prev.landmark
+              }));
+            } else if (locationPickerState.target === 'direct_card' && locationPickerState.order) {
+              const targetOrder = locationPickerState.order;
+              setOrders(orders.map(o => {
+                const isTarget = (o.id && targetOrder.id && o.id === targetOrder.id) ||
+                                 (o.tempId && targetOrder.tempId && o.tempId === targetOrder.tempId) ||
+                                 (o === targetOrder);
+                if (isTarget) {
+                  return {
+                    ...o,
+                    gpsLocation: saved.gpsLocation,
+                    address: saved.address || o.address,
+                    district: saved.district || o.district,
+                    landmark: saved.landmark || o.landmark
+                  };
+                }
+                return o;
+              }));
+              alert(`Локация заказа #${targetOrder.id || 'Б/Н'} успешно сохранена!`);
+            }
+            setLocationPickerState(prev => ({ ...prev, isOpen: false }));
+          }}
         />
       )}
     </div>
