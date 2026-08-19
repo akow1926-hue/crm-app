@@ -24,6 +24,7 @@ const AdminCardView = lazy(() => import('./components/AdminCardView'));
 const ServicesCatalogView = lazy(() => import('./components/ServicesCatalogView'));
 const YandexLogisticsMap = lazy(() => import('./components/YandexLogisticsMap'));
 const ArchivedOrdersView = lazy(() => import('./components/ArchivedOrdersView'));
+const DeletedOrdersView = lazy(() => import('./components/DeletedOrdersView'));
 
 // Dedicated Role Workspace Portals (Lazy Loaded)
 const CourierPortal = lazy(() => import('./components/roles/CourierPortal'));
@@ -162,6 +163,25 @@ export default function App() {
     } catch (e) {}
     return [];
   });
+  const [deletedOrders, setDeletedOrdersState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cosmo_crm_deleted_orders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const setDeletedOrders = (updater) => {
+    setDeletedOrdersState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('cosmo_crm_deleted_orders', JSON.stringify(next));
+      broadcastDataChange('deleted_orders', next);
+      return next;
+    });
+  };
   const [clients, setClientsState] = useState(initialClients || []);
   const [logs, setLogs] = useState(initialLogs || []);
   const [registeredUsers, setRegisteredUsersState] = useState(() => {
@@ -198,74 +218,58 @@ export default function App() {
 
         const orderRecord = {
           id: ord.id,
-          date: ord.createdDate || new Date().toISOString().split('T')[0],
-          status: ord.status,
+          date: ord.createdDate || new Date().toISOString(),
           amount: ordAmount,
-          itemsCount: ord.itemsCount || ord.items?.length || 1
+          status: ord.status,
+          itemsCount: ord.itemsCount || (ord.items ? ord.items.length : 1),
+          address: ord.address,
+          notes: ord.notes || ord.comment
         };
 
         if (existingIndex >= 0) {
-          const existing = updatedClients[existingIndex];
-          const history = existing.orderHistory || [];
-          const hasOrderInHistory = history.some(h => String(h.id) === String(ord.id));
-
-          const newHistory = hasOrderInHistory 
-            ? history.map(h => String(h.id) === String(ord.id) ? orderRecord : h)
-            : [...history, orderRecord];
-
-          const clientOrders = allOrders.filter(o => 
-            String(o.clientPhone || o.phone || '').replace(/\s+/g, '') === phoneNorm.replace(/\s+/g, '') ||
-            (o.clientName && existing.name && o.clientName.toLowerCase().trim() === existing.name.toLowerCase().trim())
-          );
-
-          const totalOrdersCount = clientOrders.length;
-          const totalLtv = clientOrders.reduce((sum, o) => {
-            const paid = parseFloat(o.paidAmount !== undefined ? o.paidAmount : (o.paymentStatus === 'paid' ? (o.totalAmount || 0) : 0)) || 0;
-            return sum + paid;
-          }, 0);
-
-          let tier = 'Standard';
-          let discountPercent = 0;
-          if (totalOrdersCount >= 5 || totalLtv >= 500000) {
-            tier = 'VIP';
-            discountPercent = 10;
-          } else if (totalOrdersCount >= 2) {
-            tier = 'Premier';
-            discountPercent = 5;
+          const client = updatedClients[existingIndex];
+          const ordersHistory = client.ordersHistory ? [...client.ordersHistory] : [];
+          
+          if (ord.id) {
+            const histIdx = ordersHistory.findIndex(h => h.id === ord.id);
+            if (histIdx >= 0) {
+              ordersHistory[histIdx] = orderRecord;
+            } else {
+              ordersHistory.unshift(orderRecord);
+            }
           }
 
-          updatedClients[existingIndex] = {
-            ...existing,
-            name: ord.clientName || existing.name,
-            phone: ord.clientPhone || ord.phone || existing.phone,
-            address: ord.address || existing.address,
-            district: ord.district || existing.district || '',
-            landmark: ord.landmark || existing.landmark || '',
-            language: ord.language || existing.language || 'Русский',
-            totalOrders: totalOrdersCount,
-            ltv: totalLtv,
-            tier: tier,
-            discountPercent: discountPercent,
-            orderHistory: newHistory
+          const totalSpent = ordersHistory.reduce((sum, o) => sum + (o.amount || 0), 0);
+          const totalOrders = ordersHistory.length;
+
+          const updatedClientObj = {
+            ...client,
+            name: ord.clientName || client.name,
+            address: ord.address || client.address,
+            district: ord.district || client.district,
+            totalOrders: Math.max(totalOrders, client.totalOrders || 0),
+            totalSpent: Math.max(totalSpent, client.totalSpent || 0),
+            ordersHistory: ordersHistory
           };
+
+          updatedClients[existingIndex] = updatedClientObj;
+          saveSupabaseClient(updatedClientObj);
         } else {
-          // Create new client in CRM database automatically!
+          const newClientId = `CL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
           const newClientObj = {
-            id: `C-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: ord.clientName || 'Новый клиент',
+            id: newClientId,
+            name: ord.clientName || 'Клиент',
             phone: phoneNorm,
             address: ord.address || 'Самарканд',
             district: ord.district || 'Сиёб',
-            landmark: ord.landmark || '',
-            language: ord.language || 'Русский',
             totalOrders: 1,
-            ltv: ordAmount,
-            tier: 'Standard',
-            discountPercent: 0,
-            notes: `Автоматически создан по заказу #${ord.id}`,
-            orderHistory: [orderRecord]
+            totalSpent: ordAmount,
+            registrationDate: ord.createdDate || new Date().toISOString(),
+            status: 'active',
+            ordersHistory: [orderRecord]
           };
-          updatedClients.push(newClientObj);
+
+          updatedClients.unshift(newClientObj);
           saveSupabaseClient(newClientObj);
         }
       });
@@ -274,13 +278,67 @@ export default function App() {
     });
   };
 
-  // Explicit order deletion function
-  const deleteOrder = (orderId) => {
+  // Explicit order deletion function with soft-delete logging
+  const deleteOrder = (orderId, reason = 'Удалено пользователем') => {
     if (!orderId) return;
+    const targetOrder = orders.find(o => 
+      String(o.id) === String(orderId) || String(o.tempId) === String(orderId)
+    );
+
+    if (targetOrder) {
+      const deletedRecord = {
+        ...targetOrder,
+        deletedAt: new Date().toISOString(),
+        deletedBy: currentUser?.name || currentUser?.username || 'Администратор',
+        deleteReason: reason
+      };
+      setDeletedOrders(prev => [deletedRecord, ...prev.filter(d => 
+        String(d.id || d.tempId) !== String(targetOrder.id || targetOrder.tempId)
+      )]);
+    }
+
     setOrdersState(prev => prev.filter(o => 
       String(o.id) !== String(orderId) && String(o.tempId) !== String(orderId)
     ));
     deleteSupabaseOrder(orderId);
+  };
+
+  // Restore order from Deleted Orders back to active orders
+  const restoreOrder = (orderToRestore) => {
+    if (!orderToRestore) return;
+    const cleanOrder = { ...orderToRestore };
+    delete cleanOrder.deletedAt;
+    delete cleanOrder.deletedBy;
+    delete cleanOrder.deleteReason;
+
+    // Remove from deletedOrders
+    setDeletedOrders(prev => prev.filter(d => 
+      String(d.id || d.tempId) !== String(orderToRestore.id || orderToRestore.tempId)
+    ));
+
+    // Add back to active orders
+    setOrders(prev => [cleanOrder, ...prev.filter(o => 
+      String(o.id || o.tempId) !== String(cleanOrder.id || cleanOrder.tempId)
+    )]);
+
+    saveSupabaseOrder(cleanOrder);
+    alert(`Заказ #${cleanOrder.id || 'Б/Н'} (${cleanOrder.clientName || 'Клиент'}) успешно восстановлен!`);
+  };
+
+  // Permanently delete from trash
+  const permanentlyDeleteOrder = (orderId) => {
+    if (window.confirm(`Вы уверены, что хотите БЕЗВОЗВРАТНО удалить этот заказ из корзины?`)) {
+      setDeletedOrders(prev => prev.filter(d => 
+        String(d.id) !== String(orderId) && String(d.tempId) !== String(orderId)
+      ));
+    }
+  };
+
+  // Clear all trash
+  const clearAllDeletedOrders = () => {
+    if (window.confirm('Вы действительно хотите полностью очистить корзину удаленных заказов?')) {
+      setDeletedOrders([]);
+    }
   };
 
   // Wrapper for setOrders that updates local state and syncs modified/new/deleted items directly to Supabase DB
@@ -288,17 +346,32 @@ export default function App() {
     setOrdersState(prevOrders => {
       const nextOrders = typeof updater === 'function' ? updater(prevOrders) : updater;
 
-      // 1. Identify deleted orders and remove from DB
+      // 1. Identify deleted orders and record to deletedOrders + remove from DB
+      const newlyDeleted = [];
       prevOrders.forEach(prevOrder => {
         const stillExists = nextOrders.some(o => 
           (o.id && prevOrder.id && String(o.id) === String(prevOrder.id)) ||
           (o.tempId && prevOrder.tempId && String(o.tempId) === String(prevOrder.tempId))
         );
         if (!stillExists) {
+          newlyDeleted.push({
+            ...prevOrder,
+            deletedAt: new Date().toISOString(),
+            deletedBy: currentUser?.name || currentUser?.username || 'Пользователь',
+            deleteReason: 'Удален из системы'
+          });
           if (prevOrder.id) deleteSupabaseOrder(prevOrder.id);
           if (prevOrder.tempId && prevOrder.tempId !== prevOrder.id) deleteSupabaseOrder(prevOrder.tempId);
         }
       });
+
+      if (newlyDeleted.length > 0) {
+        setDeletedOrdersState(prev => {
+          const next = [...newlyDeleted, ...prev.filter(d => !newlyDeleted.some(r => String(r.id || r.tempId) === String(d.id || d.tempId)))];
+          localStorage.setItem('cosmo_crm_deleted_orders', JSON.stringify(next));
+          return next;
+        });
+      }
 
       // 2. Identify modified or new orders and persist to Supabase DB & Trigger Telegram Group Notifications
       nextOrders.forEach(nextOrder => {
@@ -664,6 +737,10 @@ export default function App() {
             onLogout={handleLogout} 
             registeredUsers={registeredUsers}
             onOpenQRReceipt={(ord) => setQrModalOrder(ord)}
+            deletedOrders={deletedOrders}
+            onRestoreOrder={restoreOrder}
+            onPermanentDelete={permanentlyDeleteOrder}
+            onClearAllDeleted={clearAllDeletedOrders}
           />
         </Suspense>
         {qrModalOrder && (
@@ -708,6 +785,10 @@ export default function App() {
             currentUser={currentUser} 
             onLogout={handleLogout} 
             registeredUsers={registeredUsers}
+            deletedOrders={deletedOrders}
+            onRestoreOrder={restoreOrder}
+            onPermanentDelete={permanentlyDeleteOrder}
+            onClearAllDeleted={clearAllDeletedOrders}
           />
         </Suspense>
         {(selectedOrder || isNewOrderModalOpen) && (
@@ -735,6 +816,7 @@ export default function App() {
         setIsCollapsed={setIsSidebarCollapsed} 
         theme={theme}
         toggleTheme={toggleTheme}
+        deletedOrdersCount={deletedOrders.length}
       />
 
       {/* Main Container */}
@@ -791,12 +873,28 @@ export default function App() {
                 setSelectedOrder={setSelectedOrder}
                 onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
                 searchQuery={searchQuery}
+                onNavigateToTrash={() => setActiveTab('trash')}
+                deletedOrdersCount={deletedOrders.length}
               />
             )}
 
             {activeTab === 'archive' && (
               <ArchivedOrdersView 
                 orders={orders} 
+                deletedOrders={deletedOrders}
+                onRestoreOrder={restoreOrder}
+                onPermanentDelete={permanentlyDeleteOrder}
+                onClearAllDeleted={clearAllDeletedOrders}
+                setSelectedOrder={setSelectedOrder}
+              />
+            )}
+
+            {activeTab === 'trash' && (
+              <DeletedOrdersView 
+                deletedOrders={deletedOrders}
+                onRestoreOrder={restoreOrder}
+                onPermanentDelete={permanentlyDeleteOrder}
+                onClearAllDeleted={clearAllDeletedOrders}
                 setSelectedOrder={setSelectedOrder}
               />
             )}
@@ -847,6 +945,10 @@ export default function App() {
                 currentUser={currentUser}
                 registeredUsers={registeredUsers}
                 setRegisteredUsers={setRegisteredUsers}
+                deletedOrders={deletedOrders}
+                onRestoreOrder={restoreOrder}
+                onPermanentDelete={permanentlyDeleteOrder}
+                onClearAllDeleted={clearAllDeletedOrders}
               />
             )}
 
@@ -876,6 +978,7 @@ export default function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         onOpenNewOrder={() => setIsNewOrderModalOpen(true)}
+        deletedOrdersCount={deletedOrders.length}
       />
 
       {/* Modals & Slide-overs */}

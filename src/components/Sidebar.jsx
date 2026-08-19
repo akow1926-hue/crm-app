@@ -19,10 +19,11 @@ import {
   Smartphone,
   Tag,
   Sun,
-  Moon
+  Moon,
+  Trash2
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollapsed, setIsCollapsed, theme, toggleTheme }) {
+export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollapsed, setIsCollapsed, theme, toggleTheme, deletedOrdersCount = 0 }) {
   const menuCategories = [
     {
       title: 'ОСНОВНОЕ',
@@ -37,6 +38,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isCollap
         { id: 'kanban', label: 'Канбан Доска', icon: KanbanSquare, badge: 'Активные' },
         { id: 'ordersTable', label: 'Таблица Заказов', icon: Table },
         { id: 'archive', label: 'Архив Заказов', icon: Archive, badge: '📁' },
+        { id: 'trash', label: 'Корзина / Удаленные', icon: Trash2, badge: deletedOrdersCount > 0 ? String(deletedOrdersCount) : null },
         { id: 'yandexMap', label: 'Яндекс.Карта (GPS)', icon: MapPin, badge: 'Live' },
       ]
     },

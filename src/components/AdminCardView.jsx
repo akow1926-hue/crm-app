@@ -34,8 +34,19 @@ import {
 import { getCourierLocations } from '../services/gpsTrackingService';
 import { broadcastDataChange } from '../services/syncEngine';
 import { getTelegramBotConfig, saveTelegramBotConfig, testTelegramBotToken, testSendGroupMessage } from '../services/telegramBotService';
+import DeletedOrdersView from './DeletedOrdersView';
 
-export default function AdminCardView({ orders, clients, currentUser, registeredUsers, setRegisteredUsers }) {
+export default function AdminCardView({ 
+  orders, 
+  clients, 
+  currentUser, 
+  registeredUsers, 
+  setRegisteredUsers,
+  deletedOrders = [],
+  onRestoreOrder,
+  onPermanentDelete,
+  onClearAllDeleted
+}) {
   const [activeSection, setActiveSection] = useState('profile');
 
   // Telegram Common Group Notification Bot Config State
@@ -251,7 +262,8 @@ export default function AdminCardView({ orders, clients, currentUser, registered
           { id: 'users', label: 'Доступ', icon: Users },
           { id: 'operations', label: 'Финансы', icon: DollarSign },
           { id: 'security', label: 'Аудит', icon: History },
-          { id: 'integrations', label: 'Связи', icon: Globe }
+          { id: 'integrations', label: 'Связи', icon: Globe },
+          { id: 'trash', label: 'Корзина', icon: Trash2, badge: deletedOrders?.length > 0 ? String(deletedOrders.length) : null }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSection === tab.id;
@@ -1334,6 +1346,16 @@ export default function AdminCardView({ orders, clients, currentUser, registered
             </div>
           </div>
         </div>
+      )}
+
+      {/* SECTION: Trash / Deleted Orders */}
+      {activeSection === 'trash' && (
+        <DeletedOrdersView
+          deletedOrders={deletedOrders}
+          onRestoreOrder={onRestoreOrder}
+          onPermanentDelete={onPermanentDelete}
+          onClearAllDeleted={onClearAllDeleted}
+        />
       )}
     </div>
   );

@@ -14,14 +14,28 @@ import {
   X,
   Edit3,
   MapPin,
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react';
 import { sendSMSNotification } from '../../services/smsService';
 import { getActiveCouriers } from '../../services/staffHelper';
 import { sendTelegramOrderCard, sendTelegramMessage, getTelegramBotConfig } from '../../services/telegramBotService';
 import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
+import DeletedOrdersView from '../DeletedOrdersView';
 
-export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, onOpenNewOrder, currentUser, onLogout, registeredUsers }) {
+export default function DispatcherPortal({ 
+  orders, 
+  setOrders, 
+  setSelectedOrder, 
+  onOpenNewOrder, 
+  currentUser, 
+  onLogout, 
+  registeredUsers,
+  deletedOrders = [],
+  onRestoreOrder,
+  onPermanentDelete,
+  onClearAllDeleted
+}) {
   const activeCouriers = getActiveCouriers(registeredUsers);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,7 +213,8 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
             { id: 'new', label: '📥 1. Ожидает забора', count: orders.filter(o => o.status === 'new' || o.status === 'pickup').length },
             { id: 'cleaning', label: '🧼 2. Забран / В цеху', count: orders.filter(o => o.status === 'cleaning').length },
             { id: 'ready', label: '📦 3. Готов / На доставке', count: orders.filter(o => o.status === 'ready' || o.status === 'delivery').length },
-            { id: 'done', label: '✅ 4. Выполнен', count: orders.filter(o => o.status === 'done').length }
+            { id: 'done', label: '✅ 4. Выполнен', count: orders.filter(o => o.status === 'done').length },
+            { id: 'trash', label: '🗑️ Корзина (Удаленные)', count: deletedOrders.length, isTrash: true }
           ].map(st => (
             <button
               key={st.id}
@@ -208,8 +223,11 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
               style={{
                 fontSize: '12px',
                 padding: '6px 12px',
-                background: filterStatus === st.id ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
-                color: filterStatus === st.id ? '#fff' : 'var(--text-muted)',
+                background: filterStatus === st.id 
+                  ? (st.isTrash ? 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)' : 'var(--accent-gradient)') 
+                  : (st.isTrash ? 'rgba(244, 63, 94, 0.15)' : 'rgba(255,255,255,0.05)'),
+                color: filterStatus === st.id ? '#fff' : (st.isTrash ? '#f87171' : 'var(--text-muted)'),
+                border: st.isTrash ? '1px solid rgba(244, 63, 94, 0.3)' : 'none',
                 borderRadius: 'var(--radius-sm)',
                 whiteSpace: 'nowrap'
               }}
@@ -220,20 +238,32 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
         </div>
       </div>
 
-      {/* Orders Grid */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '700' }}>
-            📋 Реестр Заказов ({filteredOrders.length})
-          </h3>
-        </div>
+      {/* Deleted Orders View if Trash Tab is Selected */}
+      {filterStatus === 'trash' && (
+        <DeletedOrdersView 
+          deletedOrders={deletedOrders}
+          onRestoreOrder={onRestoreOrder}
+          onPermanentDelete={onPermanentDelete}
+          onClearAllDeleted={onClearAllDeleted}
+          setSelectedOrder={setSelectedOrder}
+        />
+      )}
 
-        <div className="responsive-grid-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '14px' }}>
-          {filteredOrders.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', padding: '30px', textAlign: 'center', color: 'var(--text-dim)' }}>
-              Заказов по выбранным критериям не найдено.
-            </div>
-          ) : (
+      {/* Orders Grid */}
+      {filterStatus !== 'trash' && (
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700' }}>
+              📋 Реестр Заказов ({filteredOrders.length})
+            </h3>
+          </div>
+
+          <div className="responsive-grid-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '14px' }}>
+            {filteredOrders.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', padding: '30px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                Заказов по выбранным критериям не найдено.
+              </div>
+            ) : (
             filteredOrders.map((order) => (
               <div 
                 key={order.id} 
@@ -313,6 +343,7 @@ export default function DispatcherPortal({ orders, setOrders, setSelectedOrder, 
           )}
         </div>
       </div>
+      )}
 
       {/* MODAL: Telegram Broadcast */}
       {isTgModalOpen && (

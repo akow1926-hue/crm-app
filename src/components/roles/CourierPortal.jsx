@@ -35,8 +35,9 @@ import { DeliveryDeadlineBadge } from '../../utils/deliveryDeadline';
 import { printOrderReceipt } from '../../utils/printReceipt';
 import RouteOptimizerModal from '../RouteOptimizerModal';
 import LocationPickerModal from '../LocationPickerModal';
+import DeletedOrdersView from '../DeletedOrdersView';
 
-export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers, onOpenQRReceipt }) {
+export default function CourierPortal({ orders, setOrders, currentUser, onLogout, registeredUsers, onOpenQRReceipt, deletedOrders = [], onRestoreOrder, onPermanentDelete, onClearAllDeleted }) {
   const activeCouriers = getActiveCouriers(registeredUsers);
 
   // Delete Order Handler for Courier Panel
@@ -884,7 +885,7 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
           onClick={() => setActiveSubTab('newOrder')}
           className="btn"
           style={{
-            padding: '11px 16px',
+            padding: '11px 14px',
             background: activeSubTab === 'newOrder' ? 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)' : 'rgba(255,255,255,0.05)',
             color: '#fff',
             fontSize: '13px',
@@ -894,10 +895,30 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         >
           <Plus size={16} /> Новый заказ
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('trash')}
+          className="btn"
+          style={{
+            padding: '11px 14px',
+            background: activeSubTab === 'trash' ? 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)' : 'rgba(255,255,255,0.05)',
+            color: activeSubTab === 'trash' ? '#fff' : '#f87171',
+            fontSize: '13px',
+            fontWeight: '800',
+            borderRadius: '12px',
+            border: '1px solid rgba(244, 63, 94, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          title="Просмотр и восстановление удаленных заказов"
+        >
+          <Trash2 size={15} /> Удаленные ({deletedOrders.length})
+        </button>
       </div>
 
       {/* Search & District Filter Bar */}
-      {activeSubTab !== 'newOrder' && (
+      {activeSubTab !== 'newOrder' && activeSubTab !== 'trash' && (
         <div className="glass-card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 240px', position: 'relative' }}>
@@ -1242,8 +1263,19 @@ export default function CourierPortal({ orders, setOrders, currentUser, onLogout
         </div>
       )}
 
-      {/* VIEW 2: Order Cards List (Grid layout with 4 square action buttons) */}
-      {activeSubTab !== 'newOrder' && (
+      {/* VIEW 2: Deleted Orders Tab in Courier Portal */}
+      {activeSubTab === 'trash' && (
+        <DeletedOrdersView 
+          deletedOrders={deletedOrders}
+          onRestoreOrder={onRestoreOrder}
+          onPermanentDelete={onPermanentDelete}
+          onClearAllDeleted={onClearAllDeleted}
+          setSelectedOrder={openEditModal}
+        />
+      )}
+
+      {/* VIEW 3: Order Cards List (Grid layout with 4 square action buttons) */}
+      {activeSubTab !== 'newOrder' && activeSubTab !== 'trash' && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 320px))',

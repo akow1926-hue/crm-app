@@ -20,7 +20,8 @@ import {
   Moon,
   LogOut,
   Plus,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from 'lucide-react';
 
 export default function MobileDrawer({ 
@@ -32,7 +33,8 @@ export default function MobileDrawer({
   onLogout, 
   theme, 
   toggleTheme,
-  onOpenNewOrder
+  onOpenNewOrder,
+  deletedOrdersCount = 0
 }) {
   if (!isOpen) return null;
 
@@ -50,6 +52,7 @@ export default function MobileDrawer({
         { id: 'kanban', label: 'Канбан Доска', icon: KanbanSquare, badge: 'Активные', color: '#38bdf8' },
         { id: 'ordersTable', label: 'Таблица Заказов', icon: Table, color: '#38bdf8' },
         { id: 'archive', label: 'Архив Заказов', icon: Archive, badge: '📁', color: '#94a3b8' },
+        { id: 'trash', label: 'Корзина / Удаленные', icon: Trash2, badge: deletedOrdersCount > 0 ? String(deletedOrdersCount) : null, color: '#f43f5e' },
         { id: 'yandexMap', label: 'Яндекс.Карта (GPS)', icon: MapPin, badge: 'Live', color: '#f59e0b' },
       ]
     },

@@ -17,7 +17,7 @@ import {
 import { deleteSupabaseOrder } from '../services/supabaseService';
 import { DeliveryDeadlineBadge } from '../utils/deliveryDeadline';
 
-export default function OrdersTableView({ orders, setOrders, setSelectedOrder, onOpenNewOrder, searchQuery }) {
+export default function OrdersTableView({ orders, setOrders, setSelectedOrder, onOpenNewOrder, searchQuery, onNavigateToTrash, deletedOrdersCount = 0 }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -77,15 +77,28 @@ export default function OrdersTableView({ orders, setOrders, setSelectedOrder, o
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Table Header Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ fontSize: '22px', fontWeight: '800' }}>📋 Таблица всех заказов</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: '800', margin: 0 }}>📋 Таблица всех заказов</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '3px 0 0 0' }}>
             Полный реестр заказов Cosmo Cleaning Service (Всего: {filteredOrders.length})
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {onNavigateToTrash && (
+            <button 
+              onClick={onNavigateToTrash} 
+              className="btn btn-secondary"
+              style={{
+                borderColor: 'rgba(244, 63, 94, 0.4)',
+                color: '#f87171'
+              }}
+              title="Перейти в корзину удаленных заказов"
+            >
+              <Trash2 size={15} /> Корзина ({deletedOrdersCount})
+            </button>
+          )}
           <button onClick={exportCSV} className="btn btn-secondary">
             <Download size={16} /> Экспорт CSV
           </button>
